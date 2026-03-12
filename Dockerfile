@@ -40,11 +40,14 @@ RUN apk add --no-cache openssl
 # Copy package files
 COPY package*.json ./
 
+# Copy prisma schema and config for postinstall
+COPY --from=builder /app/prisma ./prisma/
+COPY --from=builder /app/prisma.config.ts ./
+
 # Install production dependencies only
 RUN npm install --omit=dev
 
-# Copy prisma schema and generated client
-COPY --from=builder /app/prisma ./prisma/
+# Copy generated client
 COPY --from=builder /app/generated ./generated/
 
 # Copy compiled JavaScript

@@ -1,13 +1,13 @@
 import { Response } from "express";
-import prisma from "../config/db";
+import prisma from "../config/db.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { AuthenticatedRequest } from "../types";
+import { AuthenticatedRequest } from "../types/index.js";
 import {
   sendAdminApprovalEmail,
   sendOTP,
   sendApprovalNotificationToAdmin,
-} from "../services/emailService";
+} from "../services/emailService.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
 

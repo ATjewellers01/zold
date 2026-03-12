@@ -1,6 +1,6 @@
 import { Router } from "express";
-import * as goldController from "../controllers/goldController";
-import { authMiddleware, roleMiddleware } from "../middlewares/authMiddleware";
+import * as goldController from "../controllers/goldController.js";
+import { authMiddleware, roleMiddleware } from "../middlewares/authMiddleware.js";
 
 const router = Router();
 

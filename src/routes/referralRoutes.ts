@@ -1,6 +1,6 @@
 import { Router } from "express";
-import * as referralController from "../controllers/referralController";
-import { authMiddleware } from "../middlewares/authMiddleware";
+import * as referralController from "../controllers/referralController.js";
+import { authMiddleware } from "../middlewares/authMiddleware.js";
 
 const router = Router();
 

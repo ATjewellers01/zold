@@ -1,19 +1,19 @@
-import prisma from "../config/db";
-import { getLiveGoldPrice } from "./goldApiService";
+import prisma from "../config/db.js";
+import { getLiveGoldPrice } from "./goldApiService.js";
 import {
   BuyGoldData,
   SellGoldData,
   WalletBalance,
   WalletStats,
   GoldRateData,
-} from "../types";
+} from "../types/index.js";
 import {
   GoldRate,
   Wallet,
   TestWallet,
   GoldTransaction,
   SellGoldRequest,
-} from "../../generated/prisma";
+} from "../../generated/prisma/index.js";
 
 /**
  * Get or create test wallet for user

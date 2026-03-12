@@ -1,5 +1,5 @@
-import prisma from "../config/db";
-import { BankAccount } from "../../generated/prisma";
+import prisma from "../config/db.js";
+import { BankAccount } from "../../generated/prisma/index.js";
 
 interface BankAccountData {
   accountHolderName: string;

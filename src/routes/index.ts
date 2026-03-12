@@ -1,20 +1,20 @@
 import { Router, Request, Response } from "express";
 
 // Import route modules
-import userRoutes from "./userRoutes";
-import authRoutes from "./authRoutes";
-import goldRoutes from "./goldRoutes";
-import profileRoutes from "./profileRoutes";
-import bankRoutes from "./bankRoutes";
-import paymentRoutes from "./paymentRoutes";
-import sessionRoutes from "./sessionRoutes";
-import partnerRoutes from "./partnerRoutes";
-import dashboardRoutes from "./dashboardRoutes";
-import goldGoalRoutes from "./goldGoalRoutes";
-import goldGiftRoutes from "./goldGiftRoutes";
-import referralRoutes from "./referralRoutes";
-import coinRoutes from "./coinRoutes";
-import paymentMethodRoutes from "./paymentMethodRoutes";
+import userRoutes from "./userRoutes.js";
+import authRoutes from "./authRoutes.js";
+import goldRoutes from "./goldRoutes.js";
+import profileRoutes from "./profileRoutes.js";
+import bankRoutes from "./bankRoutes.js";
+import paymentRoutes from "./paymentRoutes.js";
+import sessionRoutes from "./sessionRoutes.js";
+import partnerRoutes from "./partnerRoutes.js";
+import dashboardRoutes from "./dashboardRoutes.js";
+import goldGoalRoutes from "./goldGoalRoutes.js";
+import goldGiftRoutes from "./goldGiftRoutes.js";
+import referralRoutes from "./referralRoutes.js";
+import coinRoutes from "./coinRoutes.js";
+import paymentMethodRoutes from "./paymentMethodRoutes.js";
 
 const router = Router();
 

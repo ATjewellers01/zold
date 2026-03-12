@@ -1,6 +1,6 @@
 import { Response } from "express";
-import { AuthenticatedRequest } from "../types";
-import * as paymentService from "../services/paymentService";
+import { AuthenticatedRequest } from "../types/index.js";
+import * as paymentService from "../services/paymentService.js";
 
 export const getPaymentMethods = async (
   req: AuthenticatedRequest,

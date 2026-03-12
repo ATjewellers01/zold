@@ -1,6 +1,6 @@
 import { Response } from "express";
-import { AuthenticatedRequest } from "../types";
-import * as coinService from "../services/coinService";
+import { AuthenticatedRequest } from "../types/index.js";
+import * as coinService from "../services/coinService.js";
 
 export const getCoinTypes = async (
   req: AuthenticatedRequest,

@@ -1,6 +1,6 @@
 import { Response } from "express";
-import { AuthenticatedRequest } from "../types";
-import * as goldService from "../services/goldService";
+import { AuthenticatedRequest } from "../types/index.js";
+import * as goldService from "../services/goldService.js";
 
 export const getTestWallet = async (
   req: AuthenticatedRequest,

@@ -8,7 +8,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // Import routes
-import indexRoutes from "./routes/index";
+import indexRoutes from "./routes/index.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -96,7 +96,7 @@ server.listen(PORT, () => {
   console.log(`WebSocket server ready for connections`);
 
   // Start gold price update service
-  import("./services/goldPriceUpdateService").then(
+  import("./services/goldPriceUpdateService.js").then(
     ({ startGoldPriceUpdates }) => {
       startGoldPriceUpdates(io);
     },

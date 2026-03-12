@@ -1,6 +1,6 @@
 import { Response } from "express";
-import { AuthenticatedRequest } from "../types";
-import * as sessionService from "../services/sessionService";
+import { AuthenticatedRequest } from "../types/index.js";
+import * as sessionService from "../services/sessionService.js";
 
 export const getUserSessions = async (
   req: AuthenticatedRequest,

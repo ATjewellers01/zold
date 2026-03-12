@@ -1,5 +1,5 @@
 import { Server, Socket } from "socket.io";
-import * as goldService from "./goldService";
+import * as goldService from "./goldService.js";
 
 let updateInterval: NodeJS.Timeout | null = null;
 let io: Server | null = null;

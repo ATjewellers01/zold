@@ -1,0 +1,28 @@
+﻿
+> zold-backend@2.0.0 build
+> tsc && prisma generate
+
+src/config/db.ts(3,30): error TS2307: Cannot find module '../../generated/prisma.js' or its corresponding type declarations.
+src/controllers/authController.ts(5,38): error TS2307: Cannot find module '../types.js' or its corresponding type declarations.
+src/controllers/bankController.ts(2,38): error TS2307: Cannot find module '../types.js' or its corresponding type declarations.
+src/controllers/coinController.ts(2,38): error TS2307: Cannot find module '../types.js' or its corresponding type declarations.
+src/controllers/dashboardController.ts(2,38): error TS2307: Cannot find module '../types.js' or its corresponding type declarations.
+src/controllers/goldController.ts(2,38): error TS2307: Cannot find module '../types.js' or its corresponding type declarations.
+src/controllers/goldGiftController.ts(2,38): error TS2307: Cannot find module '../types.js' or its corresponding type declarations.
+src/controllers/goldGoalController.ts(2,38): error TS2307: Cannot find module '../types.js' or its corresponding type declarations.
+src/controllers/partnerController.ts(2,38): error TS2307: Cannot find module '../types.js' or its corresponding type declarations.
+src/controllers/paymentController.ts(2,38): error TS2307: Cannot find module '../types.js' or its corresponding type declarations.
+src/controllers/paymentMethodController.ts(2,38): error TS2307: Cannot find module '../types.js' or its corresponding type declarations.
+src/controllers/profileController.ts(2,38): error TS2307: Cannot find module '../types.js' or its corresponding type declarations.
+src/controllers/referralController.ts(2,38): error TS2307: Cannot find module '../types.js' or its corresponding type declarations.
+src/controllers/sessionController.ts(2,38): error TS2307: Cannot find module '../types.js' or its corresponding type declarations.
+src/controllers/userController.ts(2,38): error TS2307: Cannot find module '../types.js' or its corresponding type declarations.
+src/middlewares/authMiddleware.ts(3,50): error TS2307: Cannot find module '../types.js' or its corresponding type declarations.
+src/services/bankService.ts(2,29): error TS2307: Cannot find module '../../generated/prisma.js' or its corresponding type declarations.
+src/services/coinService.ts(3,48): error TS2307: Cannot find module '../../generated/prisma.js' or its corresponding type declarations.
+src/services/goldApiService.ts(2,30): error TS2307: Cannot find module '../types.js' or its corresponding type declarations.
+src/services/goldService.ts(9,8): error TS2307: Cannot find module '../types.js' or its corresponding type declarations.
+src/services/goldService.ts(16,8): error TS2307: Cannot find module '../../generated/prisma.js' or its corresponding type declarations.
+src/services/paymentMethodService.ts(2,44): error TS2307: Cannot find module '../../generated/prisma.js' or its corresponding type declarations.
+src/services/paymentService.ts(2,44): error TS2307: Cannot find module '../../generated/prisma.js' or its corresponding type declarations.
+src/services/sessionService.ts(3,29): error TS2307: Cannot find module '../../generated/prisma.js' or its corresponding type declarations.

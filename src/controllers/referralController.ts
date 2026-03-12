@@ -1,6 +1,6 @@
 import { Response } from "express";
-import { AuthenticatedRequest } from "../types";
-import prisma from "../config/db";
+import { AuthenticatedRequest } from "../types/index.js";
+import prisma from "../config/db.js";
 
 export const getReferralStats = async (
   req: AuthenticatedRequest,

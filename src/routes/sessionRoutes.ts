@@ -1,6 +1,6 @@
 import { Router } from "express";
-import * as sessionController from "../controllers/sessionController";
-import { authMiddleware } from "../middlewares/authMiddleware";
+import * as sessionController from "../controllers/sessionController.js";
+import { authMiddleware } from "../middlewares/authMiddleware.js";
 
 const router = Router();
 

@@ -1,6 +1,6 @@
-import prisma from "../config/db";
-import { getCurrentGoldRate } from "./goldService";
-import { CoinInventory, CoinTransaction } from "../../generated/prisma";
+import prisma from "../config/db.js";
+import { getCurrentGoldRate } from "./goldService.js";
+import { CoinInventory, CoinTransaction } from "../../generated/prisma/index.js";
 
 // Valid coin denominations in grams
 export const VALID_COIN_GRAMS = [1, 2, 2.5, 5, 8, 10];

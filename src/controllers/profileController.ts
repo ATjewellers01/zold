@@ -1,6 +1,6 @@
 import { Response } from "express";
-import { AuthenticatedRequest } from "../types";
-import * as profileService from "../services/profileService";
+import { AuthenticatedRequest } from "../types/index.js";
+import * as profileService from "../services/profileService.js";
 
 export const getProfile = async (
   req: AuthenticatedRequest,

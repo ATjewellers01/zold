@@ -1,5 +1,5 @@
-import prisma from "../config/db";
-import { PaymentMethod, BankAccount } from "../../generated/prisma";
+import prisma from "../config/db.js";
+import { PaymentMethod, BankAccount } from "../../generated/prisma/index.js";
 
 interface PaymentMethodsResult {
   bankAccounts: BankAccount[];

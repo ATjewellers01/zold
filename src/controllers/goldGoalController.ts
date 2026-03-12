@@ -1,7 +1,7 @@
 import { Response } from "express";
-import { AuthenticatedRequest } from "../types";
-import prisma from "../config/db";
-import * as goldService from "../services/goldService";
+import { AuthenticatedRequest } from "../types/index.js";
+import prisma from "../config/db.js";
+import * as goldService from "../services/goldService.js";
 
 export const createGoal = async (
   req: AuthenticatedRequest,

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { GoldRateData } from "../types";
+import { GoldRateData } from "../types/index.js";
 
 const GOLD_API_BASE_URL = "https://www.goldapi.io/api";
 const GOLD_API_KEY = process.env.GOLD_API_KEY;

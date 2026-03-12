@@ -1,6 +1,6 @@
-import prisma from "../config/db";
+import prisma from "../config/db.js";
 import { UAParser } from "ua-parser-js";
-import { UserSession } from "../../generated/prisma";
+import { UserSession } from "../../generated/prisma/index.js";
 
 interface SecuritySettings {
   twoFactorEnabled: boolean;
