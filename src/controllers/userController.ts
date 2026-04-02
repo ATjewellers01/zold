@@ -1,40 +1,21 @@
 import { Response } from "express";
 import { AuthenticatedRequest } from "../types/index.js";
-import prisma from "../config/db.js";
+import {
+  getAllUsers as getAllUsersService,
+  getUserById as getUserByIdService,
+  createUser as createUserService,
+  updateUser as updateUserService,
+  deleteUser as deleteUserService,
+  uploadProfilePictureService,
+} from "../services/userService.js";
 
 export const getAllUsers = async (
   req: AuthenticatedRequest,
   res: Response,
 ): Promise<void> => {
-  console.log("Executing getAllUsers with Prisma");
   try {
-    const users = await prisma.user.findMany({
-      include: {
-        wallet: true,
-        kyc: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    const enrichedUsers = users.map((user) => ({
-      id: user.id,
-      name: user.name,
-      username: user.username,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      riskLevel: user.riskLevel,
-      isVerified: user.isVerified,
-      goldBalance: user.wallet?.goldBalance || 0,
-      rupeeBalance: user.wallet?.rupeeBalance || 0,
-      kycStatus: user.kyc?.status || "PENDING",
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    }));
-
-    res.status(200).json({ success: true, data: enrichedUsers });
+    const users = await getAllUsersService();
+    res.status(200).json({ success: true, data: users });
   } catch (error: any) {
     console.error("Error fetching users:", error);
     res.status(500).json({ success: false, message: "Error fetching users" });
@@ -47,17 +28,13 @@ export const getUserById = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const user = await prisma.user.findUnique({
-      where: { id },
-    });
-
-    if (!user) {
+    const user = await getUserByIdService(id);
+    res.status(200).json({ success: true, data: user });
+  } catch (error: any) {
+    if (error.message === "User not found") {
       res.status(404).json({ success: false, message: "User not found" });
       return;
     }
-
-    res.status(200).json({ success: true, data: user });
-  } catch (error: any) {
     console.error("Error fetching user:", error);
     res.status(500).json({ success: false, message: "Error fetching user" });
   }
@@ -70,19 +47,23 @@ export const createUser = async (
   try {
     const { name, email, password, username } = req.body;
 
-    const newUser = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password,
-        username: username || email.split("@")[0],
-        role: "USER",
-        isVerified: true,
-      },
-    });
+    if (!name || !email || !password) {
+      res.status(400).json({ success: false, message: "name, email, and password are required" });
+      return;
+    }
 
+    if (password.length < 6) {
+      res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
+      return;
+    }
+
+    const newUser = await createUserService({ name, email, password, username });
     res.status(201).json({ success: true, data: newUser });
   } catch (error: any) {
+    if (error.message === "Email already in use") {
+      res.status(409).json({ success: false, message: error.message });
+      return;
+    }
     console.error("Error creating user:", error);
     res.status(500).json({ success: false, message: "Error creating user" });
   }
@@ -94,25 +75,16 @@ export const updateUser = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, email, role, isVerified } = req.body;
+    const { name, email } = req.body;
 
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data: {
-        name,
-        email,
-        role,
-        isVerified,
-      },
-    });
-
+    const updatedUser = await updateUserService(id, { name, email });
     res.status(200).json({ success: true, data: updatedUser });
   } catch (error: any) {
-    console.error("Error updating user:", error);
-    if (error.code === "P2025") {
+    if (error.message === "User not found") {
       res.status(404).json({ success: false, message: "User not found" });
       return;
     }
+    console.error("Error updating user:", error);
     res.status(500).json({ success: false, message: "Error updating user" });
   }
 };
@@ -123,20 +95,31 @@ export const deleteUser = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-
-    await prisma.user.delete({
-      where: { id },
-    });
-
-    res
-      .status(200)
-      .json({ success: true, message: "User deleted successfully" });
+    await deleteUserService(id);
+    res.status(200).json({ success: true, message: "User deleted successfully" });
   } catch (error: any) {
-    console.error("Error deleting user:", error);
-    if (error.code === "P2025") {
+    if (error.message === "User not found") {
       res.status(404).json({ success: false, message: "User not found" });
       return;
     }
+    console.error("Error deleting user:", error);
     res.status(500).json({ success: false, message: "Error deleting user" });
+  }
+};
+
+export const uploadProfilePicture = async (
+  req,
+  res,
+): Promise<void> => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ success: false, message: "No file uploaded" });
+      return;
+    }
+    const result = await uploadProfilePictureService(req.user!.id, req.file);
+    res.status(200).json({ success: true, message: "Profile picture uploaded", data: result });
+  } catch (error: any) {
+    console.error("Error uploading profile picture:", error);
+    res.status(500).json({ success: false, message: error.message || "Server error" });
   }
 };

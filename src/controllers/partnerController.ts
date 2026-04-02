@@ -1,7 +1,6 @@
 import { Response } from "express";
 import { AuthenticatedRequest } from "../types/index.js";
-import prisma from "../config/db.js";
-import bcrypt from "bcryptjs";
+import * as partnerService from "../services/partnerService.js";
 
 export const getAllPartners = async (
   req: AuthenticatedRequest,
@@ -9,37 +8,11 @@ export const getAllPartners = async (
 ): Promise<void> => {
   try {
     const { city, isActive } = req.query;
+    const isActiveVal = isActive !== undefined ? isActive === "true" : undefined;
 
-    const where: any = {};
-    if (city) where.city = city;
-    if (isActive !== undefined) where.isActive = isActive === "true";
+    const partners = await partnerService.getAllPartnersService(city as string, isActiveVal);
 
-    const partners = await prisma.partner.findMany({
-      where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            isVerified: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    const parsedPartners = partners.map((partner) => ({
-      ...partner,
-      services: JSON.parse(partner.services || "[]"),
-      offers: JSON.parse(partner.offers || "[]"),
-    }));
-
-    res.json({
-      success: true,
-      partners: parsedPartners,
-    });
+    res.json({ success: true, partners });
   } catch (error: any) {
     console.error("Error fetching partners:", error);
     res.status(500).json({
@@ -56,46 +29,15 @@ export const getPartnerById = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
+    const partner = await partnerService.getPartnerByIdService(id);
 
-    const partner = await prisma.partner.findUnique({
-      where: { id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            username: true,
-            isVerified: true,
-          },
-        },
-      },
-    });
-
-    if (!partner) {
-      res.status(404).json({
-        success: false,
-        message: "Partner not found",
-      });
-      return;
-    }
-
-    const parsedPartner = {
-      ...partner,
-      services: JSON.parse(partner.services || "[]"),
-      offers: JSON.parse(partner.offers || "[]"),
-    };
-
-    res.json({
-      success: true,
-      partner: parsedPartner,
-    });
+    res.json({ success: true, partner });
   } catch (error: any) {
     console.error("Error fetching partner:", error);
-    res.status(500).json({
+    const status = error.message === "Partner not found" ? 404 : 500;
+    res.status(status).json({
       success: false,
-      message: "Failed to fetch partner",
+      message: error.message || "Failed to fetch partner",
       error: error.message,
     });
   }
@@ -106,79 +48,16 @@ export const createPartner = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const {
-      name,
-      area,
-      city,
-      state,
-      country,
-      latitude,
-      longitude,
-      distance,
-      phone,
-      email,
-      website,
-      rating,
-      reviews,
-      timings,
-      services,
-      offers,
-      description,
-      isActive,
-      isVerified,
-    } = req.body;
+    const { name, area, city, latitude, longitude, phone, timings } = req.body;
 
-    if (
-      !name ||
-      !area ||
-      !city ||
-      !latitude ||
-      !longitude ||
-      !phone ||
-      !timings
-    ) {
-      res.status(400).json({
-        success: false,
-        message: "Missing required fields",
-      });
+    if (!name || !area || !city || !latitude || !longitude || !phone || !timings) {
+      res.status(400).json({ success: false, message: "Missing required fields" });
       return;
     }
 
-    const partner = await prisma.partner.create({
-      data: {
-        name,
-        area,
-        city,
-        state: state || "Chhattisgarh",
-        country: country || "India",
-        latitude: parseFloat(latitude),
-        longitude: parseFloat(longitude),
-        distance: distance ? parseFloat(distance) : 0,
-        phone,
-        email,
-        website,
-        rating: rating ? parseFloat(rating) : 0,
-        reviews: reviews ? parseInt(reviews) : 0,
-        timings,
-        services: JSON.stringify(services || []),
-        offers: JSON.stringify(offers || []),
-        description,
-        isActive: isActive !== undefined ? isActive : true,
-        isVerified: isVerified || false,
-      },
-    });
+    const partner = await partnerService.createPartnerService(req.body);
 
-    const parsedPartner = {
-      ...partner,
-      services: JSON.parse(partner.services || "[]"),
-      offers: JSON.parse(partner.offers || "[]"),
-    };
-
-    res.status(201).json({
-      success: true,
-      message: "Partner created successfully",
-      partner: parsedPartner,
-    });
+    res.status(201).json({ success: true, message: "Partner created successfully", partner });
   } catch (error: any) {
     console.error("Error creating partner:", error);
     res.status(500).json({
@@ -194,131 +73,30 @@ export const createPartnerAccount = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const {
-      businessName,
-      ownerName,
-      username,
-      email,
-      password,
-      phone,
-      area,
-      city,
-      state,
-      latitude,
-      longitude,
-      timings,
-      services,
-      commission,
-      bankAccount,
-      website,
-      description,
-    } = req.body;
+    const { businessName, ownerName, username, email, password, phone, city } = req.body;
 
-    if (
-      !businessName ||
-      !ownerName ||
-      !username ||
-      !email ||
-      !password ||
-      !phone ||
-      !city
-    ) {
+    if (!businessName || !ownerName || !username || !email || !password || !phone || !city) {
       res.status(400).json({
         success: false,
-        message:
-          "Missing required fields: businessName, ownerName, username, email, password, phone, city",
+        message: "Missing required fields: businessName, ownerName, username, email, password, phone, city",
       });
       return;
     }
 
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [{ username }, { email }],
-      },
-    });
-
-    if (existingUser) {
-      res.status(400).json({
-        success: false,
-        message: "Username or email already exists",
-      });
-      return;
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await prisma.user.create({
-      data: {
-        name: ownerName,
-        username,
-        email,
-        password: hashedPassword,
-        phone,
-        role: "PARTNER",
-        isVerified: true,
-      },
-    });
-
-    await prisma.wallet.create({
-      data: {
-        userId: user.id,
-        goldBalance: 0,
-        pledgedGold: 0,
-        rupeeBalance: 0,
-      },
-    });
-
-    const partner = await prisma.partner.create({
-      data: {
-        name: businessName,
-        area: area || city,
-        city,
-        state: state || "Chhattisgarh",
-        country: "India",
-        latitude: latitude ? parseFloat(latitude) : 0,
-        longitude: longitude ? parseFloat(longitude) : 0,
-        phone,
-        email,
-        website: website || null,
-        timings: timings || "10:00 AM - 8:00 PM",
-        services: JSON.stringify(services || ["jewellery"]),
-        offers: JSON.stringify([]),
-        description: description || null,
-        commission: commission ? parseFloat(commission) : 2.0,
-        bankAccount: bankAccount || null,
-        userId: user.id,
-        isActive: true,
-        isVerified: true,
-      },
-    });
-
-    const parsedPartner = {
-      ...partner,
-      services: JSON.parse(partner.services),
-      offers: JSON.parse(partner.offers),
-      user: {
-        id: user.id,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        phone: user.phone,
-      },
-    };
+    const result = await partnerService.createPartnerAccountService(req.body);
 
     res.status(201).json({
       success: true,
       message: "Partner account created successfully",
-      partner: parsedPartner,
-      credentials: {
-        username,
-        password,
-      },
+      partner: result.partner,
+      credentials: result.credentials,
     });
   } catch (error: any) {
     console.error("Error creating partner account:", error);
-    res.status(500).json({
+    const status = error.message === "Username or email already exists" ? 400 : 500;
+    res.status(status).json({
       success: false,
-      message: "Failed to create partner account",
+      message: error.message || "Failed to create partner account",
       error: error.message,
     });
   }
@@ -330,42 +108,9 @@ export const updatePartner = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const updateData: any = { ...req.body };
+    const partner = await partnerService.updatePartnerService(id, req.body);
 
-    if (updateData.services) {
-      updateData.services = JSON.stringify(updateData.services);
-    }
-    if (updateData.offers) {
-      updateData.offers = JSON.stringify(updateData.offers);
-    }
-
-    if (updateData.latitude)
-      updateData.latitude = parseFloat(updateData.latitude);
-    if (updateData.longitude)
-      updateData.longitude = parseFloat(updateData.longitude);
-    if (updateData.distance)
-      updateData.distance = parseFloat(updateData.distance);
-    if (updateData.rating) updateData.rating = parseFloat(updateData.rating);
-    if (updateData.reviews) updateData.reviews = parseInt(updateData.reviews);
-    if (updateData.commission)
-      updateData.commission = parseFloat(updateData.commission);
-
-    const partner = await prisma.partner.update({
-      where: { id },
-      data: updateData,
-    });
-
-    const parsedPartner = {
-      ...partner,
-      services: JSON.parse(partner.services || "[]"),
-      offers: JSON.parse(partner.offers || "[]"),
-    };
-
-    res.json({
-      success: true,
-      message: "Partner updated successfully",
-      partner: parsedPartner,
-    });
+    res.json({ success: true, message: "Partner updated successfully", partner });
   } catch (error: any) {
     console.error("Error updating partner:", error);
     res.status(500).json({
@@ -382,15 +127,9 @@ export const deletePartner = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
+    await partnerService.deletePartnerService(id);
 
-    await prisma.partner.delete({
-      where: { id },
-    });
-
-    res.json({
-      success: true,
-      message: "Partner deleted successfully",
-    });
+    res.json({ success: true, message: "Partner deleted successfully" });
   } catch (error: any) {
     console.error("Error deleting partner:", error);
     res.status(500).json({
@@ -409,35 +148,13 @@ export const searchPartners = async (
     const { query } = req.query;
 
     if (!query) {
-      res.status(400).json({
-        success: false,
-        message: "Search query is required",
-      });
+      res.status(400).json({ success: false, message: "Search query is required" });
       return;
     }
 
-    const partners = await prisma.partner.findMany({
-      where: {
-        OR: [
-          { name: { contains: query as string, mode: "insensitive" } },
-          { city: { contains: query as string, mode: "insensitive" } },
-          { area: { contains: query as string, mode: "insensitive" } },
-        ],
-        isActive: true,
-      },
-      orderBy: { rating: "desc" },
-    });
+    const partners = await partnerService.searchPartnersService(query as string);
 
-    const parsedPartners = partners.map((partner) => ({
-      ...partner,
-      services: JSON.parse(partner.services || "[]"),
-      offers: JSON.parse(partner.offers || "[]"),
-    }));
-
-    res.json({
-      success: true,
-      partners: parsedPartners,
-    });
+    res.json({ success: true, partners });
   } catch (error: any) {
     console.error("Error searching partners:", error);
     res.status(500).json({

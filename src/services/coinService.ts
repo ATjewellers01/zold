@@ -1,8 +1,7 @@
 import prisma from "../config/db.js";
-import { getCurrentGoldRate } from "./goldService.js";
-import { CoinInventory, CoinTransaction } from "../../generated/prisma/index.js";
+import { getCurrentGoldRate } from "./metalRateService.js";
+import { getCurrentGstRate, getCurrentGstRateWhole } from "./gstService";
 
-// Valid coin denominations in grams
 export const VALID_COIN_GRAMS = [1, 2, 2.5, 5, 8, 10];
 
 interface CoinType {
@@ -22,16 +21,14 @@ interface CoinInventoryResult {
   currentRatePerGram: string;
 }
 
-/**
- * Get available coin types with current prices
- */
 export const getCoinTypes = async (): Promise<CoinType[]> => {
   const goldRate = await getCurrentGoldRate();
   const buyRate = parseFloat(String(goldRate.buyRate));
+  const gstMultiplier = await getCurrentGstRate();
 
   return VALID_COIN_GRAMS.map((grams) => {
     const basePrice = grams * buyRate;
-    const gst = basePrice * 0.03;
+    const gst = basePrice * gstMultiplier;
     return {
       grams,
       name: `${grams} Gram Gold Coin`,
@@ -44,63 +41,14 @@ export const getCoinTypes = async (): Promise<CoinType[]> => {
   });
 };
 
-/**
- * Get user's coin inventory
- */
-export const getUserCoinInventory = async (
-  userId: string,
-): Promise<CoinInventoryResult> => {
+export const getUserCoinInventory = async (userId: string) => {
   const inventory = await prisma.coinInventory.findMany({
-    where: { userId },
-    orderBy: { coinGrams: "asc" },
+    where: { userId }
   });
 
-  const goldRate = await getCurrentGoldRate();
-  const currentRate = parseFloat(String(goldRate.buyRate));
-
-  let totalGrams = 0;
-  let totalValue = 0;
-
-  const enrichedInventory = inventory.map((item) => {
-    const itemGrams = item.coinGrams * item.quantity;
-    const itemValue = itemGrams * currentRate;
-    totalGrams += itemGrams;
-    totalValue += itemValue;
-
-    return {
-      ...item,
-      totalGrams: itemGrams,
-      currentValue: itemValue.toFixed(2),
-      coinName: `${item.coinGrams} Gram Coin`,
-    };
-  });
-
-  const allCoinsInventory = VALID_COIN_GRAMS.map((grams) => {
-    const existing = enrichedInventory.find((item) => item.coinGrams === grams);
-    if (existing) return existing;
-
-    return {
-      id: null,
-      userId,
-      coinGrams: grams,
-      quantity: 0,
-      totalGrams: 0,
-      currentValue: "0.00",
-      coinName: `${grams} Gram Coin`,
-    };
-  });
-
-  return {
-    inventory: allCoinsInventory,
-    totalGrams,
-    totalValue: totalValue.toFixed(2),
-    currentRatePerGram: currentRate.toFixed(2),
-  };
+  return inventory;
 };
 
-/**
- * Buy coin with rupees (using test wallet)
- */
 export const buyCoinWithRupees = async (
   userId: string,
   coinGrams: number,
@@ -120,7 +68,9 @@ export const buyCoinWithRupees = async (
   const ratePerGram = parseFloat(String(goldRate.buyRate));
 
   const goldValue = coinGrams * quantity * ratePerGram;
-  const gst = goldValue * 0.03;
+  const gstMultiplier = await getCurrentGstRate();
+  const gstRateWhole = await getCurrentGstRateWhole();
+  const gst = goldValue * gstMultiplier;
   const finalAmount = goldValue + gst;
 
   let testWallet = await prisma.testWallet.findUnique({
@@ -149,7 +99,7 @@ export const buyCoinWithRupees = async (
 
     const existingInventory = await tx.coinInventory.findUnique({
       where: {
-        userId_coinGrams: { userId, coinGrams },
+        userId_coinGrams_metal: { userId, coinGrams, metal: "GOLD" },
       },
     });
 
@@ -167,21 +117,25 @@ export const buyCoinWithRupees = async (
           userId,
           coinGrams,
           quantity,
+          metal: "GOLD",
         },
       });
     }
 
     const transaction = await tx.coinTransaction.create({
       data: {
-        userId,
-        type: "BUY_WITH_RUPEES",
-        coinGrams,
+        user_id: userId,
+        metal: "GOLD",
+        type: "BUY",
+        weight: coinGrams,
         quantity,
-        ratePerGram,
-        goldValue,
+        rate_per_gram: ratePerGram,
+        gold_locked_price: goldValue,
+        silver_locked_price: 0,
         gst,
-        finalAmount,
-        paymentMode: "TEST_WALLET",
+        gstRate: gstRateWhole,
+        final_amount: finalAmount,
+        payment_mode: "WALLET",
         status: "COMPLETED",
       },
     });
@@ -196,9 +150,6 @@ export const buyCoinWithRupees = async (
   return result;
 };
 
-/**
- * Convert wallet gold to coin
- */
 export const convertWalletGoldToCoin = async (
   userId: string,
   coinGrams: number,
@@ -241,7 +192,7 @@ export const convertWalletGoldToCoin = async (
 
     const existingInventory = await tx.coinInventory.findUnique({
       where: {
-        userId_coinGrams: { userId, coinGrams },
+        userId_coinGrams_metal: { userId, coinGrams, metal: "GOLD" },
       },
     });
 
@@ -259,21 +210,25 @@ export const convertWalletGoldToCoin = async (
           userId,
           coinGrams,
           quantity,
+          metal: "GOLD",
         },
       });
     }
 
     const transaction = await tx.coinTransaction.create({
       data: {
-        userId,
-        type: "CONVERT_FROM_GOLD",
-        coinGrams,
+        user_id: userId,
+        metal: "GOLD",
+        type: "BUY",
+        weight: coinGrams,
         quantity,
-        ratePerGram,
-        goldValue,
+        rate_per_gram: ratePerGram,
+        gold_locked_price: goldValue,
+        silver_locked_price: 0,
         gst: 0,
-        finalAmount: goldValue,
-        paymentMode: "WALLET_GOLD",
+        gstRate: 0,
+        final_amount: goldValue,
+        payment_mode: "WALLET",
         status: "COMPLETED",
       },
     });
@@ -289,25 +244,22 @@ export const convertWalletGoldToCoin = async (
   return result;
 };
 
-/**
- * Get coin transaction history
- */
 export const getCoinTransactionHistory = async (
   userId: string,
   limit: number = 20,
 ) => {
   const transactions = await prisma.coinTransaction.findMany({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
+    where: { user_id: userId },
+    orderBy: { created_at: "desc" },
     take: limit,
   });
 
   return transactions.map((tx) => ({
     ...tx,
-    coinName: `${tx.coinGrams} Gram Coin`,
-    ratePerGram: parseFloat(String(tx.ratePerGram)).toFixed(2),
-    goldValue: parseFloat(String(tx.goldValue)).toFixed(2),
+    coinName: `${tx.weight} Gram Coin`,
+    ratePerGram: parseFloat(String(tx.rate_per_gram)).toFixed(2),
+    goldValue: parseFloat(String(tx.gold_locked_price)).toFixed(2),
     gst: parseFloat(String(tx.gst)).toFixed(2),
-    finalAmount: parseFloat(String(tx.finalAmount)).toFixed(2),
+    finalAmount: parseFloat(String(tx.final_amount)).toFixed(2),
   }));
 };

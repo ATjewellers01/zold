@@ -19,41 +19,49 @@ model User {
   updatedAt         DateTime          @updatedAt
   otp               String?
   otpExpiry         DateTime?
-  phone             String?
+  phone             String @unique
   riskLevel         String            @default("LOW")
   dataSharing       Boolean           @default(false)
   profileVisibility String            @default("contacts")
   readReceipts      Boolean           @default(true)
   twoFactorEnabled  Boolean           @default(false)
   adminRole         AdminRoleType?
+  referralCode      String?           @unique
   bankAccounts      BankAccount[]
-  goldTransactions  GoldTransaction[]
+  coinInventory     CoinInventory[]
+  metalRate       MetalRate[]
+  coinTransactions  CoinTransaction[]
+  receivedGifts     MetalGift[]        @relation("ReceivedGifts")
+  sentGifts         MetalGift[]        @relation("SentGifts")
+  goldGoals         GoldGoal[]
+  cart  Cart?
+  lockedCart LockedCart[]
+  coinPurchaseSessions  CoinPurchaseSession[]
+  metalTransactions  MetalTransaction[]
+  metalPurchaseSession MetalPurchaseSession[]
   kyc               Kyc?
   partner           Partner?
   paymentMethods    PaymentMethod[]
+  referredBy        Referral?         @relation("ReferredUser")
+  referrals         Referral[]        @relation("Referrer")
   savedAddresses    SavedAddress[]
+  profilePicture    String?
   testWallet        TestWallet?
   sessions          UserSession[]
+  notifications     Notification[]
   wallet            Wallet?
-  goldGoals         GoldGoal[]
-  sentGifts         GoldGift[]   @relation("SentGifts")
-  receivedGifts     GoldGift[]   @relation("ReceivedGifts")
-  referralCode      String?      @unique
-  referredBy        Referral?    @relation("ReferredUser")
-  referrals         Referral[]   @relation("Referrer")
-  coinInventory     CoinInventory[]
-  coinTransactions  CoinTransaction[]
-  sellGoldRequests  SellGoldRequest[]
+  gstConfigs        GstConfig[]       @relation("AdminGstConfigs")
 }
 
 model Wallet {
   id           String   @id @default(uuid())
   userId       String   @unique
-  goldBalance  Float    @default(0)
+  goldBalance  Decimal  @default(0) @db.Decimal(10, 4)
+  silverBalance Decimal @default(0) @db.Decimal(10, 4)
   rupeeBalance Decimal  @default(0) @db.Decimal(10, 2)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  pledgedGold  Float    @default(0)
+  pledgedGold  Decimal  @default(0) @db.Decimal(10, 4)
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -83,36 +91,90 @@ model TestWallet {
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model GoldTransaction {
-  id           String   @id @default(uuid())
-  userId       String
-  type         String
-  goldGrams    Float
-  ratePerGram  Decimal  @db.Decimal(10, 2)
-  totalAmount  Decimal  @db.Decimal(10, 2)
-  gst          Decimal  @db.Decimal(10, 2)
-  finalAmount  Decimal  @db.Decimal(10, 2)
-  paymentMode  String
-  status       String   @default("COMPLETED")
-  storageType  String
-  createdAt    DateTime @default(now())
-  purchaseRate Decimal? @db.Decimal(10, 2)
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model MetalTransaction {
+    id              String            @id @default(uuid())
+    user_id          String
+    user            User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+    session_id      String? @unique
+    session         MetalPurchaseSession? @relation(fields: [session_id], references: [id], onDelete: SetNull)
+    
+    metalGiftId String? @unique
+    metalGift  MetalGift? @relation(fields: [metalGiftId], references: [id])
+
+    metalType       Metal
+    transactionType TransactionType
+    metalGrams      Decimal           @db.Decimal(10, 4)
+    ratePerGram     Decimal           @db.Decimal(10, 2)
+    totalAmount     Decimal           @db.Decimal(10, 2)
+    gst             Decimal           @db.Decimal(10, 2)
+    finalAmount     Decimal           @db.Decimal(10, 2)
+    paymentMode     PaymentMode
+    status          TransactionStatus @default(PENDING)
+    storageType     String?
+    purchaseRate    Decimal?          @db.Decimal(10, 2)
+    gstRate         Decimal           @default(3) @db.Decimal(5, 2)
+    razorpay_order_id   String?
+    razorpay_payment_id String?
+    remark  String?
+    createdAt       DateTime          @default(now())
+
+    @@index([user_id])
+    @@index([status])
+    @@index([session_id])
+    @@index([razorpay_order_id])
 }
 
-model GoldRate {
-  id        String   @id @default(uuid())
-  buyRate   Decimal  @db.Decimal(10, 2)
-  sellRate  Decimal  @db.Decimal(10, 2)
-  isActive  Boolean  @default(true)
-  createdBy String?
-  createdAt DateTime @default(now())
-  margin    Float    @default(0)
-  source    String   @default("MANUAL")
-  spread    Float    @default(0)
+model MetalPurchaseSession {
+    id              String                @id @default(uuid())
+    user_id         String
+    user            User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  @@index([isActive, createdAt])
+    metalType       Metal                
+    transactionType TransactionType     
+    metalGrams      Decimal               @db.Decimal(10, 4)  // how many grams
+
+    // pricing — locked at session creation
+    locked_rate     Decimal               @db.Decimal(10, 2) 
+    totalAmount     Decimal               @db.Decimal(10, 2)  
+    gst             Decimal               @db.Decimal(10, 2)  
+    gstRate         Decimal               @default(3) @db.Decimal(5, 2)
+    finalAmount     Decimal               @db.Decimal(10, 2)  
+
+    // session control
+    status          PurchaseSessionStatus @default(ACTIVE)
+    started_at      DateTime              @default(now())
+    expires_at      DateTime
+    updated_at      DateTime              @updatedAt
+
+    // reverse relation
+    transaction     MetalTransaction?
+
+    @@index([user_id])
+    @@index([status])
+    @@index([expires_at])
 }
+
+enum Source {
+  ADMIN
+  LIVE
+}
+
+ model MetalRate {
+    id        String   @id @default(uuid())
+    metal     Metal 
+    buyRate   Decimal  @db.Decimal(10, 2)
+    sellRate  Decimal  @db.Decimal(10, 2)
+    isActive  Boolean  @default(true)
+    createdBy String
+    source Source
+    createdAt DateTime @default(now())
+    user User @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+    @@index([metal, createdBy, isActive])
+    @@unique([metal, createdBy, source, isActive])
+    
+  }
 
 model BankAccount {
   id                String   @id @default(uuid())
@@ -230,13 +292,145 @@ model Partner {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   bankAccount String?
-  commission  Float     @default(0)
+  commission  Decimal   @default(0) @db.Decimal(5, 2)
   userId      String?   @unique
   user        User?     @relation(fields: [userId], references: [id])
 
   @@index([city])
   @@index([isActive])
   @@index([userId])
+}
+
+enum Frequency {
+  MONTHLY
+  QUATERLY
+  YEARLY
+}
+
+enum GoalStatus {
+  ACTIVE
+  CANCELLED
+  COMPLETED
+}
+
+model GoldGoal {
+  id               String   @id @default(uuid())
+  userId           String
+  goalName             String
+  targetAmount     Decimal  @db.Decimal(10, 2)
+  currentAmount    Decimal  @default(0) @db.Decimal(10, 2)
+  targetGrams      Decimal  @db.Decimal(10, 4)
+  currentGrams     Decimal  @default(0) @db.Decimal(10, 4)
+  targetDate         DateTime
+  goalCategory         String
+  autoAllocate     Boolean  @default(false)
+  status           GoalStatus   @default(ACTIVE)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  paymentFrequency Frequency   @default(MONTHLY)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum GiftType {
+  COIN
+  VIRTUAL
+}
+
+enum GiftStatus {
+  COMPLETED
+  FAILED
+}
+
+model MetalGift {
+  id             String    @id @default(uuid())
+  senderId       String
+  recipientId    String
+  giftType       GiftType    @default(VIRTUAL)
+  metalType     Metal
+  metalGrams    Decimal?   @db.Decimal(10, 4)
+  coinGrams    Decimal? @db.Decimal(10, 4)
+  coinQuantity   Int?
+  message        String?
+  occasion       String?
+  createdAt      DateTime  @default(now())
+  status        GiftStatus @default(COMPLETED)
+  recipient      User     @relation("ReceivedGifts", fields: [recipientId], references: [id], onDelete: Cascade)
+  sender         User      @relation("SentGifts", fields: [senderId], references: [id], onDelete: Cascade)
+
+  metalTransaction MetalTransaction?
+
+  @@index([senderId])
+  @@index([recipientId])
+}
+
+model Referral {
+  id             String   @id @default(uuid())
+  referrerId     String
+  referredUserId String   @unique
+  status         String   @default("PENDING")
+  rewardAmount   Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  referredUser   User     @relation("ReferredUser", fields: [referredUserId], references: [id])
+  referrer       User     @relation("Referrer", fields: [referrerId], references: [id])
+
+  @@index([referrerId])
+}
+
+model CoinInventory {
+  id        String   @id @default(uuid())
+  userId    String
+  metal     Metal
+  coinGrams Int
+  quantity  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, coinGrams, metal])
+  @@index([userId])
+}
+
+model CoinTransaction {
+  id                  String            @id @default(uuid())
+  user_id             String
+  user                User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  // link back to session and locked cart
+  session_id          String?
+  session             CoinPurchaseSession?  @relation(fields: [session_id], references: [session_id])
+  locked_cart_id      String?
+  lockedCart          LockedCart?       @relation(fields: [locked_cart_id], references: [id])
+
+  // what was bought
+  metal               Metal             // GOLD | SILVER
+  type                TransactionType   // BUY | SELL
+  weight              Int               // matches CartItem.weight
+  quantity            Int               // matches CartItem.quantity
+
+  // pricing — matches your lockedCart fields
+  rate_per_gram       Decimal           @db.Decimal(10, 2)
+  gold_locked_price   Decimal?          @db.Decimal(10, 2)
+  silver_locked_price Decimal?          @db.Decimal(10, 2)
+  gst                 Decimal           @db.Decimal(10, 2)
+  gstRate             Decimal           @default(3) @db.Decimal(5, 2)
+  final_amount        Decimal           @db.Decimal(10, 2)
+
+  // payment
+  payment_mode        PaymentMode
+  razorpay_order_id   String?           // from Razorpay order creation
+  razorpay_payment_id String?           // from Razorpay after payment
+  status              TransactionStatus @default(PENDING)
+
+  created_at          DateTime          @default(now())
+
+  @@index([user_id])
+  @@index([created_at])
+  @@index([status])
+  @@index([session_id])
+  @@index([razorpay_order_id])
 }
 
 enum Role {
@@ -259,129 +453,129 @@ enum KycStatus {
   REJECTED
 }
 
-model GoldGoal {
-  id            String   @id @default(uuid())
-  userId        String
-  name          String
-  targetAmount  Decimal  @db.Decimal(10, 2)
-  currentAmount Decimal  @default(0) @db.Decimal(10, 2)
-  targetGrams   Float
-  currentGrams  Float    @default(0)
-  deadline      DateTime
-  category      String
-  icon          String
-  color         String
-  autoAllocate  Boolean  @default(false)
-  status        String   @default("ACTIVE")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+enum TransactionType {
+  BUY
+  SELL
+  GIFT
 }
 
-model GoldGift {
-  id              String    @id @default(uuid())
-  senderId        String
-  recipientId     String?   // Set when gift is claimed
-  recipientName   String
-  recipientPhone  String
-  giftType        String    @default("rupees") // "rupees", "grams", "coins"
-  amount          Decimal   @db.Decimal(10, 2)
-  goldGrams       Float
-  coinGrams       Int?      // Coin denomination (1, 2, 5, 10) if coin gift
-  coinQuantity    Int?      // Number of coins if coin gift
-  message         String?
-  occasion        String
-  status          String    @default("PENDING") // PENDING, CLAIMED, EXPIRED
-  claimedAt       DateTime? // When the gift was claimed
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  sender          User      @relation("SentGifts", fields: [senderId], references: [id], onDelete: Cascade)
-  recipient       User?     @relation("ReceivedGifts", fields: [recipientId], references: [id], onDelete: SetNull)
-
-  @@index([senderId])
-  @@index([recipientId])
-  @@index([recipientPhone])
+enum PaymentMode {
+  RAZORPAY
+  WALLET
+  UPI
 }
 
-model Referral {
-  id              String   @id @default(uuid())
-  referrerId      String
-  referredUserId  String   @unique
-  status          String   @default("PENDING") // PENDING, COMPLETED (Purchase made)
-  rewardAmount    Decimal  @default(0) @db.Decimal(10, 2) // Amount earned by referrer
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  referrer        User     @relation("Referrer", fields: [referrerId], references: [id])
-  referredUser    User     @relation("ReferredUser", fields: [referredUserId], references: [id])
-
-  @@index([referrerId])
-}
-
-// Gold Coin Inventory - tracks user's physical gold coin holdings
-model CoinInventory {
-  id        String   @id @default(uuid())
-  userId    String
-  coinGrams Int      // 1, 2, 5, or 10 grams
-  quantity  Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, coinGrams])
-  @@index([userId])
-}
-
-// Gold Coin Transaction - tracks coin purchases and conversions
-model CoinTransaction {
-  id          String   @id @default(uuid())
-  userId      String
-  type        String   // BUY_WITH_RUPEES, CONVERT_FROM_GOLD
-  coinGrams   Int      // 1, 2, 5, or 10 grams
-  quantity    Int      // number of coins
-  ratePerGram Decimal  @db.Decimal(10, 2)
-  goldValue   Decimal  @db.Decimal(10, 2) // coinGrams * quantity * ratePerGram
-  gst         Decimal  @db.Decimal(10, 2)
-  finalAmount Decimal  @db.Decimal(10, 2) // goldValue + gst (for rupee purchase)
-  paymentMode String   // TEST_WALLET, WALLET_GOLD
-  status      String   @default("COMPLETED")
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([createdAt])
-}
-
-// Sell Gold Request - requires admin approval before wallet credit
-model SellGoldRequest {
-  id              String            @id @default(uuid())
-  userId          String
-  goldGrams       Float
-  ratePerGram     Decimal           @db.Decimal(10, 2)
-  grossAmount     Decimal           @db.Decimal(10, 2)
-  gst             Decimal           @db.Decimal(10, 2)
-  netAmount       Decimal           @db.Decimal(10, 2)
-  paymentMethod   String            // "bank", "card", "wallet", "credit"
-  bankAccountId   String?
-  paymentMethodId String?
-  status          SellRequestStatus @default(PENDING)
-  adminNotes      String?
-  processedBy     String?
-  processedAt     DateTime?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  
-  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([status])
-  @@index([createdAt])
-}
-
-enum SellRequestStatus {
+enum TransactionStatus {
   PENDING
-  APPROVED
+  COMPLETED
+  FAILED
   REJECTED
+  REFUNDED
+}
+
+enum PurchaseSessionStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+// Cart reservation/Session locking
+model CoinPurchaseSession {
+  session_id  String   @id @default(uuid())
+  user_id     String
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  started_at  DateTime @default(now())
+  expires_at  DateTime
+  status      PurchaseSessionStatus   @default(ACTIVE)
+  gstRate     Decimal                   @default(3) @db.Decimal(5, 2)
+  updated_at  DateTime                @updatedAt
+  lockedCart LockedCart?
+  transactions CoinTransaction[]
+
+
+  @@index([user_id])
+  @@index([status])
+  @@index([expires_at])
+}
+
+// Cart 1 for user - Persistent
+model Cart {
+  id  String @id @default(uuid())
+  user_id String @unique
+  user  User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  items CartItem[]
+  updated_at DateTime @updatedAt
+}
+
+enum Metal {
+  GOLD
+  SILVER
+}
+
+// Persistent Cart items
+model CartItem {
+  id String @id @default(uuid())
+  cart_id String
+  cart Cart @relation(fields: [cart_id], references: [id], onDelete: Cascade)
+  weight Int
+  quantity Int @default(1)
+  metal Metal
+
+  @@unique([cart_id, weight, metal])
+}
+
+// Cart 2 for users: Locked/ephemeral
+model LockedCart {
+  id String @id @default(uuid())
+  session_id String @unique
+  session CoinPurchaseSession @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
+  user_id String
+  user User @relation(fields: [user_id], references: [id])
+  locked_at DateTime @default(now())
+  gold_locked_price Decimal @db.Decimal(10, 2)
+  silver_locked_price Decimal @db.Decimal(10, 2)
+  gstRate Decimal @default(3) @db.Decimal(5, 2)
+  items LockedCartItem[]
+  transactions CoinTransaction[]
+}
+
+// LockedCart items
+model LockedCartItem {
+  id String @id @default(uuid())
+  locked_cart_id String
+  lockedCart LockedCart @relation(fields: [locked_cart_id], references: [id], onDelete: Cascade)
+  weight Int
+  quantity Int
+  metal Metal
+  item_price Decimal @db.Decimal(10, 2)
+
+  @@unique([locked_cart_id, weight, metal])
+}
+
+model GstConfig {
+    id         String   @id @default(uuid())
+    rate       Decimal  @db.Decimal(5, 2)     // e.g. 3 = 3%
+    updatedBy  String
+    updatedAt  DateTime @updatedAt
+    createdAt  DateTime @default(now())
+    isActive   Boolean  @default(true)
+    admin      User     @relation("AdminGstConfigs", fields: [updatedBy], references: [id])
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  user_id     String
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  type        String   // "GIFT_RECEIVED"
+  title       String
+  body        String
+  data        Json?    // arbitrary payload (giftId, metalType, grams, senderName, etc.)
+  is_read     Boolean  @default(false)
+  created_at  DateTime @default(now())
+
+  @@index([user_id])
+  @@index([is_read])
+  @@index([created_at])
 }

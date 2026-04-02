@@ -20,9 +20,6 @@ interface AddUpiData {
   isPrimary?: boolean;
 }
 
-/**
- * Get all payment methods for a user
- */
 export const getPaymentMethods = async (
   userId: string,
 ): Promise<PaymentMethodsResult> => {
@@ -45,9 +42,6 @@ export const getPaymentMethods = async (
   };
 };
 
-/**
- * Add a new bank account
- */
 export const addBankAccount = async (
   userId: string,
   data: AddBankAccountData,
@@ -83,9 +77,6 @@ export const addBankAccount = async (
   return bankAccount;
 };
 
-/**
- * Add a new UPI method
- */
 export const addUpiMethod = async (
   userId: string,
   data: AddUpiData,
@@ -111,9 +102,6 @@ export const addUpiMethod = async (
   return upiMethod;
 };
 
-/**
- * Set a bank account as primary
- */
 export const setPrimaryBankAccount = async (
   userId: string,
   accountId: string,
@@ -134,9 +122,6 @@ export const setPrimaryBankAccount = async (
   return bankAccount;
 };
 
-/**
- * Set a UPI method as primary
- */
 export const setPrimaryUpiMethod = async (
   userId: string,
   methodId: string,
@@ -157,9 +142,6 @@ export const setPrimaryUpiMethod = async (
   return upiMethod;
 };
 
-/**
- * Delete a bank account
- */
 export const deleteBankAccount = async (
   userId: string,
   accountId: string,
@@ -174,9 +156,6 @@ export const deleteBankAccount = async (
   return bankAccount;
 };
 
-/**
- * Delete a UPI method
- */
 export const deleteUpiMethod = async (
   userId: string,
   methodId: string,

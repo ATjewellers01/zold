@@ -16,6 +16,7 @@ interface UserProfile {
   role: string;
   isVerified: boolean;
   createdAt: Date;
+  profilePicture: string | null;
   wallet: { goldBalance: number; rupeeBalance: number } | null;
   kyc: {
     status: string;
@@ -25,9 +26,6 @@ interface UserProfile {
   } | null;
 }
 
-/**
- * Get complete user profile with all related data
- */
 export const getUserProfile = async (
   userId: string,
 ): Promise<UserProfile | null> => {
@@ -42,6 +40,7 @@ export const getUserProfile = async (
       role: true,
       isVerified: true,
       createdAt: true,
+      profilePicture: true,
       wallet: {
         select: {
           goldBalance: true,
@@ -80,9 +79,6 @@ export const getUserProfile = async (
   };
 };
 
-/**
- * Update user profile information
- */
 export const updateUserProfile = async (
   userId: string,
   data: UpdateProfileData,
@@ -117,9 +113,6 @@ export const updateUserProfile = async (
   return updatedUser;
 };
 
-/**
- * Change user password
- */
 export const changePassword = async (
   userId: string,
   oldPassword: string,

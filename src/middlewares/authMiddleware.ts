@@ -2,9 +2,11 @@ import { Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { AuthenticatedRequest, JwtPayload } from "../types/index.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable is not set");
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
-// Permission map for different admin roles
 const permissionMap: Record<string, string[]> = {
   OPERATIONS_ADMIN: [
     "manage_orders",
@@ -36,23 +38,20 @@ const permissionMap: Record<string, string[]> = {
   ],
 };
 
-/**
- * Get permissions based on admin role type
- */
 const getPermissionsByRole = (adminRole: string | undefined): string[] => {
   if (!adminRole) return [];
   return permissionMap[adminRole] || [];
 };
 
-/**
- * Authentication middleware
- */
 export const authMiddleware = (
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): void => {
-  const token = req.headers.authorization?.split(" ")[1];
+  // Prefer httpOnly cookie; fall back to Authorization header for clients
+  // that still send Bearer tokens (e.g. direct fetch calls, Postman).
+  const token: string | undefined =
+    req.cookies?.token ?? req.headers.authorization?.split(" ")[1];
 
   if (!token) {
     res.status(401).json({ success: false, message: "No token provided" });
@@ -60,7 +59,6 @@ export const authMiddleware = (
   }
 
   try {
-    // Verify token
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
     req.user = {
       id: decoded.userId,
@@ -77,14 +75,11 @@ export const authMiddleware = (
   }
 };
 
-/**
- * Role-based access control middleware
- */
 export const roleMiddleware = (...allowedRoles: string[]) => {
   return (
     req: AuthenticatedRequest,
     res: Response,
-    next: NextFunction,
+    next: NextFunction
   ): void => {
     if (!req.user || !allowedRoles.includes(req.user.role)) {
       res.status(403).json({ success: false, message: "Access denied" });
@@ -94,24 +89,19 @@ export const roleMiddleware = (...allowedRoles: string[]) => {
   };
 };
 
-/**
- * Permission-based middleware for granular admin access control
- */
 export const hasPermission = (requiredPermissions: string[]) => {
   return (
     req: AuthenticatedRequest,
     res: Response,
-    next: NextFunction,
+    next: NextFunction
   ): void => {
     const { role, adminRole } = req.user || {};
 
-    // Super admin has all permissions
     if (role === "ADMIN" && adminRole === "SUPER_ADMIN") {
       next();
       return;
     }
 
-    // For non-super admins, check specific permissions
     if (role !== "ADMIN") {
       res
         .status(403)
@@ -120,7 +110,7 @@ export const hasPermission = (requiredPermissions: string[]) => {
     }
 
     const permissions = getPermissionsByRole(adminRole);
-    const hasAccess = requiredPermissions.some((p) => permissions.includes(p));
+    const hasAccess = requiredPermissions.every((p) => permissions.includes(p));
 
     if (!hasAccess) {
       res.status(403).json({

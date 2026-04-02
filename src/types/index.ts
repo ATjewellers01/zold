@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from "express";
 
-// Extended Request with user information
 export interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
@@ -8,9 +7,10 @@ export interface AuthenticatedRequest extends Request {
     adminRole?: string;
     username?: string;
   };
+  metalPurchaseSession?: any;
+  coinPurchaseSession?: any;
 }
 
-// JWT Payload
 export interface JwtPayload {
   userId: string;
   role: string;
@@ -20,7 +20,6 @@ export interface JwtPayload {
   exp?: number;
 }
 
-// API Response types
 export interface ApiResponse<T = any> {
   success: boolean;
   message?: string;
@@ -28,7 +27,6 @@ export interface ApiResponse<T = any> {
   error?: string;
 }
 
-// Pagination
 export interface PaginationParams {
   page?: number;
   limit?: number;
@@ -44,7 +42,6 @@ export interface PaginatedResponse<T> {
   };
 }
 
-// Gold Rate
 export interface GoldRateData {
   buyRate: number;
   sellRate: number;
@@ -52,7 +49,6 @@ export interface GoldRateData {
   error?: string;
 }
 
-// Transaction types
 export interface BuyGoldData {
   amountInRupees: number;
   goldGrams: number;
@@ -67,13 +63,26 @@ export interface SellGoldData {
   paymentMethodId?: string;
 }
 
-// Wallet types
 export interface WalletBalance {
-  goldBalance: number;
+  // raw grams in wallet (virtual metal)
+  goldGrams: number;
+  silverGrams: number;
   rupeeBalance: number;
-  currentValue: number;
-  currentRate: number;
-  recentTransactions: any[];
+
+  // coin holdings (physical coins, in grams)
+  goldCoinGrams: number;
+  silverCoinGrams: number;
+
+  // valuation in rupees (grams × rate)
+  goldValuation: number;       // wallet gold value in ₹
+  silverValuation: number;     // wallet silver value in ₹
+  goldCoinValuation: number;   // gold coins value in ₹
+  silverCoinValuation: number; // silver coins value in ₹
+  totalValuation: number;      // everything combined in ₹
+
+  // current rates per gram
+  currentGoldRate: number;
+  currentSilverRate: number;
 }
 
 export interface WalletStats {
@@ -84,14 +93,12 @@ export interface WalletStats {
   profitLossPercent: number;
 }
 
-// Express middleware type
 export type ExpressMiddleware = (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction,
 ) => void | Promise<void>;
 
-// Error middleware type
 export type ErrorMiddleware = (
   err: Error,
   req: Request,
@@ -99,7 +106,6 @@ export type ErrorMiddleware = (
   next: NextFunction,
 ) => void;
 
-// Controller function type
 export type ControllerFunction = (
   req: AuthenticatedRequest,
   res: Response,

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import * as userController from "../controllers/userController.js";
 import { authMiddleware, roleMiddleware } from "../middlewares/authMiddleware.js";
+import multer from "multer";
 
 const router = Router();
 
@@ -35,5 +36,9 @@ router.delete(
   roleMiddleware("ADMIN"),
   userController.deleteUser,
 );
+
+import { upload } from "../middlewares/uploadMiddleware.js";
+
+router.post("/upload", authMiddleware, upload.single("updated_image"), userController.uploadProfilePicture);
 
 export default router;

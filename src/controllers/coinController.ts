@@ -39,7 +39,7 @@ export const getUserCoinInventory = async (
     console.error("Error getting coin inventory:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to get coin inventory",
+      message: (error as any).message || "Failed to get coin inventory",
       error: error.message,
     });
   }

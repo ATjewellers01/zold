@@ -9,7 +9,8 @@ router.use(authMiddleware);
 
 router.post("/", goldGoalController.createGoal);
 router.get("/", goldGoalController.getGoals);
-router.delete("/:id", goldGoalController.deleteGoal);
-router.patch("/:id", goldGoalController.updateGoal);
+router.get("/history", goldGoalController.getGoalHistory);
+// router.delete("/:id", goldGoalController.deleteGoal);
+// router.patch("/:id", goldGoalController.updateGoal);
 
 export default router;

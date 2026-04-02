@@ -9,7 +9,10 @@ import {
   sendApprovalNotificationToAdmin,
 } from "../services/emailService.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable is not set");
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
 export const signup = async (
   req: AuthenticatedRequest,
@@ -95,7 +98,8 @@ export const signup = async (
       { expiresIn: "24h" },
     );
 
-    const approvalLink = `http://localhost:5001/api/auth/approve-admin/${token}`;
+    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+    const approvalLink = `${baseUrl}/api/auth/approve-admin/${token}`;
 
     if (role === "ADMIN") {
       await sendAdminApprovalEmail(
@@ -148,8 +152,6 @@ export const login = async (
       },
     });
 
-    console.log(user, "getting response back from the user");
-
     if (!user) {
       res.status(401).json({ success: false, message: "Invalid credentials" });
       return;
@@ -180,7 +182,14 @@ export const login = async (
       { expiresIn: "7d" },
     );
 
-    res.json({
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    res.status(200).json({
       success: true,
       token,
       user: {
@@ -190,6 +199,7 @@ export const login = async (
         email: user.email,
         role: user.role,
         adminRole: user.adminRole,
+        profilePicture: user.profilePicture ?? null,
       },
     });
   } catch (error: any) {
@@ -247,6 +257,18 @@ export const verifyOtp = async (
     console.error("OTP Verification error:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
+};
+
+export const logout = (
+  req: AuthenticatedRequest,
+  res: Response,
+): void => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict",
+  });
+  res.status(200).json({ success: true, message: "Logged out successfully" });
 };
 
 export const approveAdmin = async (

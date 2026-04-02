@@ -9,9 +9,6 @@ interface SecuritySettings {
   profileVisibility: string;
 }
 
-/**
- * Get all active sessions for a user
- */
 export const getUserSessions = async (
   userId: string,
 ): Promise<UserSession[]> => {
@@ -23,9 +20,6 @@ export const getUserSessions = async (
   return sessions;
 };
 
-/**
- * Create a new session when user logs in
- */
 export const createSession = async (
   userId: string,
   token: string,
@@ -68,9 +62,6 @@ export const createSession = async (
   }
 };
 
-/**
- * Update session activity
- */
 export const updateSessionActivity = async (token: string): Promise<void> => {
   try {
     await prisma.userSession.update({
@@ -82,9 +73,6 @@ export const updateSessionActivity = async (token: string): Promise<void> => {
   }
 };
 
-/**
- * Revoke a specific session
- */
 export const revokeSession = async (
   sessionId: string,
   userId: string,
@@ -108,9 +96,6 @@ export const revokeSession = async (
   return { message: "Session revoked successfully" };
 };
 
-/**
- * Logout from all sessions
- */
 export const revokeAllSessions = async (
   userId: string,
   exceptToken: string,
@@ -127,9 +112,6 @@ export const revokeAllSessions = async (
   return { message: "All other sessions logged out successfully" };
 };
 
-/**
- * Get user security settings
- */
 export const getUserSecuritySettings = async (
   userId: string,
 ): Promise<SecuritySettings | null> => {
@@ -146,9 +128,6 @@ export const getUserSecuritySettings = async (
   return user;
 };
 
-/**
- * Update user security settings
- */
 export const updateSecuritySettings = async (
   userId: string,
   settings: Partial<SecuritySettings>,
