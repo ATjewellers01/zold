@@ -17,7 +17,8 @@ export const lookupUserByPhone = async (req: AuthenticatedRequest, res: Response
       found: true,
       data: { id: user.id, name: user.name, email: user.email, profilePicture: user.profilePicture ?? null }
     });
-  } catch (error: any) {
+  } 
+  catch (error: any) {
     if (error.message === "User does not exists") {
       res.json({ success: true, found: false, message: "No ZOLD user found with this number" });
     } else {

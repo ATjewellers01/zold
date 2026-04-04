@@ -3,7 +3,13 @@ import { getCurrentGoldRate, getCurrentSilverRate } from "./metalRateService.js"
 
 export const getUserByPhone = async (recipientPhoneNumber: string) => {
   const user = await prisma.user.findUnique({
-    where: { phone: recipientPhoneNumber }
+    where: { phone: recipientPhoneNumber },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      profilePicture: true,
+    },
   });
 
   if (!user) {
