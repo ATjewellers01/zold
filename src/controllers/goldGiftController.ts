@@ -15,7 +15,7 @@ export const lookupUserByPhone = async (req: AuthenticatedRequest, res: Response
     res.json({
       success: true,
       found: true,
-      data: { id: user.id, name: user.name, email: user.email }
+      data: { id: user.id, name: user.name, email: user.email, profilePicture: user.profilePicture ?? null }
     });
   } catch (error: any) {
     if (error.message === "User does not exists") {
