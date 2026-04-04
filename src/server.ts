@@ -23,6 +23,7 @@ const allowedOrigins = [
   "http://localhost:3005",
   "http://localhost:3000",
   "https://zold-frontend-ttwl.vercel.app",
+  "https://zold-frontend-mzjh.vercel.app",
   process.env.FRONTEND_URL,
 ].filter(Boolean) as string[];
 
