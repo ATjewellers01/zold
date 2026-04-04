@@ -1,4 +1,4 @@
-import prisma from "../config/db"
+import prisma from "../config/db.js"
 
 export const clearIncativeMetalRate = async () => {
     const oneWeek = 7 * 24 * 60 * 60 * 1000;

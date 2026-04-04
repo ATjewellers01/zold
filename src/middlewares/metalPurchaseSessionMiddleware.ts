@@ -1,6 +1,6 @@
 import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../types/index.js";
-import prisma from "../config/db";
+import prisma from "../config/db.js";
 
 export const validateMetalPurchaseSession = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const sessionId = req.body?.sessionId || req.params?.sessionId || req.query?.sessionId;

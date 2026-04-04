@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { addToPrimaryCart, executeCoinPurchaseSession, initiateCoinPurchaseSession } from "../controllers/coinPurchaseSessionController";
+import { addToPrimaryCart, executeCoinPurchaseSession, initiateCoinPurchaseSession } from "../controllers/coinPurchaseSessionController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 
 const router = Router();

@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { AuthenticatedRequest } from "../types/index.js";
-import { updateMetalPriceService } from "../services/manageMetalPriceService"
+import { updateMetalPriceService } from "../services/manageMetalPriceService.js"
 
 export const updateMetalPrice = async (req: AuthenticatedRequest, res: Response) => {
     try {

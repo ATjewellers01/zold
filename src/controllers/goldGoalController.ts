@@ -1,4 +1,4 @@
-import { createGoalService, getGoalsService, getGoalHistoryService } from "../services/goldGoalService"
+import { createGoalService, getGoalsService, getGoalHistoryService } from "../services/goldGoalService.js"
 
 export const createGoal = async (req, res) => {
   try {

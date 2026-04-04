@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getGstRate } from "../controllers/gstController";
+import { getGstRate } from "../controllers/gstController.js";
 
 const router = Router();
 

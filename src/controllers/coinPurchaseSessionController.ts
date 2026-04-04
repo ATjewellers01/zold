@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { AuthenticatedRequest } from "../types/index.js";
-import { addToPrimaryCartService, executeCoinPurchaseSessionService, initiateCoinPurchaseSessionService } from "../services/coinPurchaseSessionService"
+import { addToPrimaryCartService, executeCoinPurchaseSessionService, initiateCoinPurchaseSessionService } from "../services/coinPurchaseSessionService.js"
 
 export const addToPrimaryCart = async (req: AuthenticatedRequest, res: Response) => {
     const { gold, silver } = req.body?.metalDetails || {};

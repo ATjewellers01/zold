@@ -1,7 +1,7 @@
-import prisma from "../config/db";
+import prisma from "../config/db.js";
 import { getCurrentGoldRate, getCurrentSilverRate } from "./metalRateService.js";
-import { getCurrentGstRate, getCurrentGstRateWhole } from "./gstService";
-import { getOrCreateTestWallet } from "./testWalletService";
+import { getCurrentGstRate, getCurrentGstRateWhole } from "./gstService.js";
+import { getOrCreateTestWallet } from "./testWalletService.js";
 import { allocateToGoals } from "./goldGoalService.js";
 
 export const initiateMetalPurchaseSessionService = async (

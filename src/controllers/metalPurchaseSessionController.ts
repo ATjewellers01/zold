@@ -5,7 +5,7 @@ import {
     executeMetalPurchaseService,
     getActiveSessionService,
     cancelMetalPurchaseSessionService
-} from "../services/metalPurchaseSessionService"
+} from "../services/metalPurchaseSessionService.js"
 
 const VALID_METALS = ["GOLD", "SILVER"] as const;
 const VALID_TRANSACTION_TYPES = ["BUY", "SELL"] as const;

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getUSDToINRRate } from "./getUSDToINRRate";
+import { getUSDToINRRate } from "./getUSDToINRRate.js";
 
 const SILVER_API_URL = "https://www.goldapi.io/api/XAG/USD";
 
