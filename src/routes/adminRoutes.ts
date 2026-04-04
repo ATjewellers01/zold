@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { authMiddleware, roleMiddleware } from "../middlewares/authMiddleware";
-import * as gstController from "../controllers/gstController";
-import * as transactionController from "../controllers/transactionController";
-import * as manageMetalPrice from "../controllers/manageMetalPriceController";
+import { authMiddleware, roleMiddleware } from "../middlewares/authMiddleware.js";
+import * as gstController from "../controllers/gstController.js";
+import * as transactionController from "../controllers/transactionController.js";
+import * as manageMetalPrice from "../controllers/manageMetalPriceController.js";
 
 const router = Router();
 

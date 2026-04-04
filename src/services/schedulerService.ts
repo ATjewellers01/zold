@@ -1,6 +1,6 @@
 import cron from "node-cron";
-import { clearOldSessionsService } from "./sessionCleanerService";
-import { clearIncativeMetalRate } from "./metalRateCleanerService";
+import { clearOldSessionsService } from "./sessionCleanerService.js";
+import { clearIncativeMetalRate } from "./metalRateCleanerService.js";
 
 export const startScheduler = () => {
     cron.schedule("*/15 * * * *", async () => {

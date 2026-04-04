@@ -1,4 +1,4 @@
-import prisma from "../config/db"
+import prisma from "../config/db.js"
 
 export const approveSellTransactionService = async (transactionId: string, adminId: string) => {
     const transaction = await prisma.metalTransaction.findFirst({

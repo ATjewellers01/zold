@@ -1,6 +1,6 @@
 import prisma from "../config/db.js";
 import { getCurrentGoldRate } from "./metalRateService.js";
-import { getCurrentGstRate, getCurrentGstRateWhole } from "./gstService";
+import { getCurrentGstRate, getCurrentGstRateWhole } from "./gstService.js";
 
 export const VALID_COIN_GRAMS = [1, 2, 2.5, 5, 8, 10];
 

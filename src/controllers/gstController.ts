@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { AuthenticatedRequest } from "../types/index.js";
-import * as gstService from "../services/gstService";
+import * as gstService from "../services/gstService.js";
 
 /**
  * Public endpoint to get current GST rate (whole number)

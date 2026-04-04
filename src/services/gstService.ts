@@ -1,4 +1,4 @@
-import prisma from "../config/db";
+import prisma from "../config/db.js";
 
 /**
  * Fetches the current active GST rate as a multiplier (e.g., 0.03 for 3%).

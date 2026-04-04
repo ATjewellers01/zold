@@ -1,4 +1,4 @@
-import prisma from "../config/db";
+import prisma from "../config/db.js";
 
 export const validateCoinPurchaseSession = async (req: any, res: any, next: any) => {
     const sessionId = req.body?.sessionId || req.params?.sessionId || req.query?.sessionId;

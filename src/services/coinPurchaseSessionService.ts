@@ -1,7 +1,7 @@
-import prisma from "../config/db"
+import prisma from "../config/db.js"
 import { getCurrentGoldRate, getCurrentSilverRate } from "./metalRateService.js";
-import { getCurrentGstRateWhole } from "./gstService";
-import { getOrCreateTestWallet } from "./testWalletService";
+import { getCurrentGstRateWhole } from "./gstService.js";
+import { getOrCreateTestWallet } from "./testWalletService.js";
 
 export const addToPrimaryCartService = async (metalDetails, userId:string) => {
     const { gold, silver } = metalDetails;
