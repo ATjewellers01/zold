@@ -115,7 +115,8 @@ export const signup = async (
         message: "Admin account created. Waiting for Super Admin approval.",
         role: "ADMIN",
       });
-    } else {
+    } 
+    else {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -124,6 +125,8 @@ export const signup = async (
         data: { otp, otpExpiry },
       });
 
+      console.log("**************************")
+      console.log(newUser.email);
       await sendOTP(newUser.email, otp);
 
       res.status(201).json({

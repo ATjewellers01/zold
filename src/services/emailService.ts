@@ -18,11 +18,13 @@ const sendEmail = async (
 ): Promise<boolean> => {
   try {
     const { data, error } = await resend.emails.send({
-      from: "onboarding@resend.dev",
+      from: "zold@mail.saloonmate.com",
       to: to,
       subject: subject,
       html: html,
     });
+
+    console.log(to);
 
     if (error) {
       console.error("Resend Error:", error);
@@ -44,14 +46,14 @@ export const sendOTP = async (
   const subject = "Your Verification OTP";
   const html = `
     <h2>Verify Your Email</h2>
-    <p>Your One-Time Password (OTP) for registration is:</p>
+    <p>Your One-Time Password (OTP) fo r registration is:</p>
     <h1 style="color: #3D3066; letter-spacing: 5px;">${otp}</h1>
     <p>This code will expire in 10 minutes.</p>
     <p>If you did not request this, please ignore this email.</p>
     <br/>
     <p style="color: gray; font-size: 12px;">(Testing Mode: Original recipient was ${userEmail})</p>
   `;
-  return await sendEmail("vikashchaudhari103@gmail.com", subject, html);
+  return await sendEmail(`${userEmail}`, subject, html);
 };
 
 export const sendAdminApprovalEmail = async (

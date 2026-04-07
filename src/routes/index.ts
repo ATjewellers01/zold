@@ -16,7 +16,7 @@ import coinPurchaseSessionRoute from "./coinPurchaseSessionRoute.js";
 import metalPurchaseSessionRoutes from "./metalPurchaseSessionRoutes.js";
 import adminRoutes from "./adminRoutes.js";
 import metaRoutes from "./metaRoutes.js";
-import goldGiftRoutes from "./goldGiftRoutes.js";
+import metalGiftRoutes from "./metalGiftRoutes.js";
 import notificationRoutes from "./notificationRoutes.js";
 
 const router = Router();
@@ -37,7 +37,7 @@ router.use("/coin-purchase-session", coinPurchaseSessionRoute);
 router.use("/metal-purchase-session", metalPurchaseSessionRoutes);
 router.use("/admin", adminRoutes);
 router.use("/meta", metaRoutes);
-router.use("/gold-gifts", goldGiftRoutes);
+router.use("/metal-gifts", metalGiftRoutes);
 router.use("/notifications", notificationRoutes);
 
 router.get("/", (req: Request, res: Response) => {
