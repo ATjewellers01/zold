@@ -46,7 +46,7 @@ export const sendOTP = async (
   const subject = "Your Verification OTP";
   const html = `
     <h2>Verify Your Email</h2>
-    <p>Your One-Time Password (OTP) fo r registration is:</p>
+    <p>Your One-Time Password (OTP) for registration is:</p>
     <h1 style="color: #3D3066; letter-spacing: 5px;">${otp}</h1>
     <p>This code will expire in 10 minutes.</p>
     <p>If you did not request this, please ignore this email.</p>

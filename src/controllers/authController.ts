@@ -125,7 +125,6 @@ export const signup = async (
         data: { otp, otpExpiry },
       });
 
-      console.log("**************************")
       console.log(newUser.email);
       await sendOTP(newUser.email, otp);
 
