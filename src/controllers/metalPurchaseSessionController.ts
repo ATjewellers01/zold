@@ -4,8 +4,8 @@ import {
     initiateMetalPurchaseSessionService,
     getActiveSessionService,
     cancelMetalPurchaseSessionService,
-    createRazorpayOrderService,
-    verifyRazorpayPaymentService
+    createMetalRzpOrderService,
+    verifyMetalRzpPaymentService
 } from "../services/metalPurchaseSessionService.js"
 
 const VALID_METALS = ["GOLD", "SILVER"] as const;
@@ -65,12 +65,12 @@ export const initiateMetalPurchaseSession = async (req: AuthenticatedRequest, re
     }
 };
 
-export const createRazorpayOrder = async (req: AuthenticatedRequest, res: Response) => {
+export const createMetalRazorpayOrder = async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user!.id;
         const sessionId = req.metalPurchaseSession!.id;
 
-        const result = await createRazorpayOrderService(
+        const result = await createMetalRzpOrderService(
             userId,
             sessionId,
         );
@@ -89,11 +89,11 @@ export const createRazorpayOrder = async (req: AuthenticatedRequest, res: Respon
     }
 };
 
-export const verifyRazorPayment = async (req, res) => {
+export const verifyMetalRazorPayment = async (req, res) => {
     try {
         const userId = req.user.id;
         const { sessionId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-        const result = await verifyRazorpayPaymentService(
+        const result = await verifyMetalRzpPaymentService(
             userId, 
             sessionId, razorpay_order_id,
             razorpay_payment_id,

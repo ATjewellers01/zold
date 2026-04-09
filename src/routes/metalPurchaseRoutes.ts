@@ -4,8 +4,8 @@ import {
   initiateMetalPurchaseSession, 
   getActiveSession, 
   cancelMetalPurchaseSession, 
-  createRazorpayOrder, 
-  verifyRazorPayment 
+  createMetalRazorpayOrder,
+  verifyMetalRazorPayment
 } from "../controllers/metalPurchaseSessionController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { validateMetalPurchaseSession } from "../middlewares/metalPurchaseSessionMiddleware.js";
@@ -28,13 +28,13 @@ router.post(
   "/create-order",
   authMiddleware,
   validateMetalPurchaseSession,
-  createRazorpayOrder
+  createMetalRazorpayOrder
 );
 
 
 router.post("/verify-payment",
   authMiddleware,
-  verifyRazorPayment
+  verifyMetalRazorPayment
 );
 
 router.post(

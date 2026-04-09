@@ -1,7 +1,10 @@
 import prisma from "../config/db.js"
+import { razorpay } from "../config/razorpay.js";
+import { createHmac, sign } from "crypto";
+import { CoinTransaction } from "../../generated/prisma/index.js";
+
 import { getCurrentGoldRate, getCurrentSilverRate } from "./metalRateService.js";
 import { getCurrentGstRateWhole } from "./gstService.js";
-import { getOrCreateTestWallet } from "./testWalletService.js";
 
 export const addToPrimaryCartService = async (metalDetails, userId:string) => {
     const { gold, silver } = metalDetails;
@@ -52,7 +55,7 @@ export const initiateCoinPurchaseSessionService = async (cartId, userId) => {
     const silverRate = await getCurrentSilverRate();
     const silverBuyRate = parseFloat(String(silverRate.buyRate));
 
-    if (goldBuyRate === 0 || silverBuyRate === 0) {
+    if (!goldBuyRate || !silverBuyRate) {
         throw new Error("Metal rates are unavailable, try again later");
     }
 
@@ -108,7 +111,7 @@ export const initiateCoinPurchaseSessionService = async (cartId, userId) => {
     return result;
 };
 
-export const executeCoinPurchaseSessionService = async (sessionId: string, userId: string) => {
+export const createCoinRzpOrderService = async (sessionId: string, userId: string) => {
     const session = await prisma.coinPurchaseSession.findUnique({
         where: { session_id: sessionId },
         include: {
@@ -126,6 +129,16 @@ export const executeCoinPurchaseSessionService = async (sessionId: string, userI
 
     if (session.status !== "ACTIVE") {
         throw new Error(`Session is ${session.status.toLowerCase()}`);
+    }
+
+    if(session.razorpay_order_id) {
+        return {
+            orderId: session.razorpay_order_id,
+            paymentId: session.razorpay_payment_id,
+            currency: "INR",
+            keyId: process.env.RAZORPAY_KEY_ID,
+            sessionId
+        }
     }
 
     if (new Date() > session.expires_at) {
@@ -150,73 +163,244 @@ export const executeCoinPurchaseSessionService = async (sessionId: string, userI
         totalToDeduct += (itemBasePrice + itemGst);
     });
 
-    return await prisma.$transaction(async (tx) => {
-        const testWallet = await getOrCreateTestWallet(tx, userId);
+    try {
+        const order = await razorpay.orders.create({
+            amount: Math.round(Number(totalToDeduct) * 100),
+            currency: "INR",
+            receipt: session.session_id,
+        });
 
-        if (Number(testWallet.virtualBalance) < totalToDeduct) {
-            throw new Error(`Insufficient balance. Required: ₹${totalToDeduct.toFixed(2)}`);
+        await prisma.coinPurchaseSession.update({
+            where: {
+                session_id: sessionId,
+                user_id: userId,
+                status: "ACTIVE"
+            },
+            data: { razorpay_order_id: order.id }
+        });
+
+        return {
+            orderId: order.id,
+            amount: order.amount,
+            currency: order.currency,
+            keyId: process.env.RAZORPAY_KEY_ID,
+            sessionId
         }
+    }
+    catch (error) {
+        console.log("Razorpay order creation failed", error);
+        throw new Error("Payment gateway unavailable. Please try again");
+    }
+};
 
-        await tx.testWallet.update({
-            where: { userId },
+export const verifyCoinRzpPaymentService = async (
+    sessionId: string,
+    userId: string, 
+    orderId: string, 
+    paymentId: string, 
+    signature: string
+) => {
+
+    const session = await prisma.coinPurchaseSession.findFirst({
+        where: {
+            razorpay_payment_id: paymentId, status: "COMPLETED"
+        }
+    });
+
+    if(session) {
+        const [transaction, inventory] = await Promise.all([
+            prisma.coinTransaction.findFirst({
+                where: {
+                    user_id: userId,
+                    session_id: sessionId,
+                    razorpay_order_id: orderId,
+                    razorpay_payment_id: paymentId,
+                    status: "COMPLETED"
+                }
+            }),
+
+            prisma.inventory.findUnique({
+                where: { userId }
+            })
+        ]);
+
+        return { session, transaction, inventory }
+    }
+
+    const paymentSession = await prisma.coinPurchaseSession.findFirst({
+        where: { session_id: sessionId, user_id: userId, status: "ACTIVE" },
+        include: { lockedCart: { include: { items: true } } }
+    });
+
+    if (paymentSession?.razorpay_order_id !== orderId) {
+        throw new Error("Invalid transaction");
+    }
+
+    const expected = createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
+        .update(`${orderId}|${paymentId}`)
+        .digest("hex");
+
+    if (expected !== signature) {
+        throw new Error("Invalid transaction");
+    }
+
+    const lockedCart = paymentSession.lockedCart;
+    if (!lockedCart || !lockedCart.items.length) {
+        throw new Error("Locked cart missing");
+    }
+
+    const gstMultiplier = Number(paymentSession.gstRate) / 100;
+
+    const verifiedPayment = await prisma.$transaction(async (tx) => {
+        const updatedSession = await tx.coinPurchaseSession.update({
+            where: {
+                session_id: sessionId,
+                user_id: userId,
+                razorpay_order_id: orderId
+            },
             data: {
-                virtualBalance: { decrement: totalToDeduct }
+                status: "COMPLETED",
+                razorpay_payment_id: paymentId
             }
         });
 
-        const transactions: any[] = [];
+        const transactions: CoinTransaction[] = [];
         for (const item of lockedCart.items) {
-            await tx.coinInventory.upsert({
-                where: {
-                    userId_coinGrams_metal: { userId, coinGrams: item.weight, metal: item.metal }
-                },
-                create: {
-                    userId,
-                    metal: item.metal,
-                    coinGrams: item.weight,
-                    quantity: item.quantity
-                },
-                update: {
-                    quantity: { increment: item.quantity }
-                }
-            });
-
+            const ratePerGram = item.metal === "GOLD"
+                ? Number(lockedCart.gold_locked_price)
+                : Number(lockedCart.silver_locked_price);
             const basePrice = Number(item.item_price);
             const gst = basePrice * gstMultiplier;
-            
+            const finalAmount = basePrice + gst;
+
             const transaction = await tx.coinTransaction.create({
                 data: {
                     user_id: userId,
-                    session_id: session.session_id,
-                    locked_cart_id: lockedCart.id,
+                    session_id: sessionId,
                     metal: item.metal,
                     type: "BUY",
                     weight: item.weight,
                     quantity: item.quantity,
-                    rate_per_gram: item.metal === "GOLD" ? lockedCart.gold_locked_price : lockedCart.silver_locked_price,
-                    gold_locked_price: item.metal === "GOLD" ? basePrice : 0,
-                    silver_locked_price: item.metal === "SILVER" ? basePrice : 0,
-                    gst: gst,
-                    gstRate: session.gstRate,
-                    final_amount: basePrice + gst,
-                    payment_mode: "WALLET",
+                    rate_per_gram: ratePerGram,
+                    gold_locked_price: lockedCart.gold_locked_price,
+                    silver_locked_price: lockedCart.silver_locked_price,
+                    gst,
+                    gstRate: paymentSession.gstRate,
+                    final_amount: finalAmount,
+                    payment_mode: "RAZORPAY",
+                    razorpay_order_id: orderId,
+                    razorpay_payment_id: paymentId,
+                    razorpay_signature: signature,
                     status: "COMPLETED"
+                }
+            });
+            transactions.push(transaction);
+
+            await tx.coinInventory.upsert({
+                where: {
+                    userId_coinGrams_metal: {
+                        userId,
+                        coinGrams: item.weight,
+                        metal: item.metal
+                    }
+                },
+                create: {
+                    userId,
+                    coinGrams: item.weight,
+                    metal: item.metal,
+                    quantity: item.quantity
+                },
+                update: { quantity: { increment: item.quantity } }
+            });
+        }
+
+        return { session: updatedSession, transactions };
+    });
+
+    return verifiedPayment;
+}
+
+export const failedCoinRzpPaymentService = async (
+    userId,
+    sessionId,
+    orderId,
+    paymentId,
+    reason
+) => {
+    const paymentSession = await prisma.coinPurchaseSession.findFirst({
+        where: { session_id: sessionId, user_id: userId, status: "ACTIVE" },
+        include: { lockedCart: { include: { items: true } } }
+    });
+
+    if (!paymentSession || paymentSession.razorpay_order_id !== orderId) {
+        throw new Error("Invalid transaction");
+    }
+
+    const lockedCart = paymentSession.lockedCart;
+    if (!lockedCart || !lockedCart.items.length) {
+        throw new Error("Locked cart missing");
+    }
+
+    const gstMultiplier = Number(paymentSession.gstRate) / 100;
+
+    // Session stays ACTIVE — user can retry payment within the 5-minute window
+    const failedPayment = await prisma.$transaction(async (tx) => {
+        const updatedSession = paymentSession;
+
+        const transactions: CoinTransaction[] = [];
+        for (const item of lockedCart.items) {
+            const ratePerGram = item.metal === "GOLD"
+                ? Number(lockedCart.gold_locked_price)
+                : Number(lockedCart.silver_locked_price);
+            const basePrice = Number(item.item_price);
+            const gst = basePrice * gstMultiplier;
+            const finalAmount = basePrice + gst;
+
+            const transaction = await tx.coinTransaction.create({
+                data: {
+                    user_id: userId,
+                    session_id: sessionId,
+                    metal: item.metal,
+                    type: "BUY",
+                    weight: item.weight,
+                    quantity: item.quantity,
+                    rate_per_gram: ratePerGram,
+                    gold_locked_price: lockedCart.gold_locked_price,
+                    silver_locked_price: lockedCart.silver_locked_price,
+                    gst,
+                    gstRate: paymentSession.gstRate,
+                    final_amount: finalAmount,
+                    payment_mode: "RAZORPAY",
+                    razorpay_order_id: orderId,
+                    razorpay_payment_id: paymentId,
+                    razorpay_signature: null,
+                    status: "FAILED",
+                    remark: reason
                 }
             });
             transactions.push(transaction);
         }
 
-        await tx.coinPurchaseSession.update({
-            where: { session_id: sessionId },
-            data: { status: "COMPLETED" }
-        });
-
-        await tx.cartItem.deleteMany({
-            where: {
-                cart: { user_id: userId }
-            }
-        });
-
-        return { success: true, transactions };
+        return { session: updatedSession, transactions };
     });
+
+    return failedPayment;
+    
+}
+
+export const cancelCoinPurchaseSessionService = async (sessionId: string, userId: string) => {
+    const session = await prisma.coinPurchaseSession.findFirst({
+        where: { session_id: sessionId, user_id: userId, status: "ACTIVE" }
+    });
+
+    if (!session) {
+        throw new Error("No active session found to cancel");
+    }
+
+    await prisma.coinPurchaseSession.update({
+        where: { session_id: sessionId },
+        data: { status: "CANCELLED" }
+    });
+
+    return { cancelled: true, sessionId };
 };

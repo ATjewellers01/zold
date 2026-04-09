@@ -363,7 +363,6 @@ model CoinTransaction {
   id                  String               @id @default(uuid())
   user_id             String
   session_id          String?
-  locked_cart_id      String?
   metal               Metal
   type                TransactionType
   weight              Int
@@ -379,8 +378,8 @@ model CoinTransaction {
   razorpay_payment_id String?
   razorpay_signature String?
   status              TransactionStatus    @default(PENDING)
+  remark String?
   created_at          DateTime             @default(now())
-  lockedCart          LockedCart?          @relation(fields: [locked_cart_id], references: [id])
   session             CoinPurchaseSession? @relation(fields: [session_id], references: [session_id])
   user                User                 @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
@@ -397,6 +396,8 @@ model CoinPurchaseSession {
   started_at   DateTime              @default(now())
   expires_at   DateTime
   status       PurchaseSessionStatus @default(ACTIVE)
+  razorpay_order_id String?
+  razorpay_payment_id String?
   gstRate      Decimal               @default(3) @db.Decimal(5, 2)
   updated_at   DateTime              @updatedAt
   user         User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -435,7 +436,6 @@ model LockedCart {
   gold_locked_price   Decimal             @db.Decimal(10, 2)
   silver_locked_price Decimal             @db.Decimal(10, 2)
   gstRate             Decimal             @default(3) @db.Decimal(5, 2)
-  transactions        CoinTransaction[]
   session             CoinPurchaseSession @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
   user                User                @relation(fields: [user_id], references: [id])
   items               LockedCartItem[]

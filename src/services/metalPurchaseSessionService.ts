@@ -67,7 +67,7 @@ export const initiateMetalPurchaseSessionService = async (
     return { session };
 };
 
-export const createRazorpayOrderService = async (
+export const createMetalRzpOrderService = async (
     userId: string,
     sessionId: string,
 ) => {
@@ -127,7 +127,7 @@ export const createRazorpayOrderService = async (
     }
 };
 
-export const verifyRazorpayPaymentService = async (
+export const verifyMetalRzpPaymentService = async (
     userId: string,
     sessionId: string,
     orderId: string,
