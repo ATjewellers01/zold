@@ -52,18 +52,18 @@ model User {
   SipTransaction       SipTransaction[]
   testWallet           TestWallet?
   sessions             UserSession[]
-  wallet               Wallet?
+  inventory               Inventory?
 }
 
-model Wallet {
+model Inventory {
   id            String   @id @default(uuid())
   userId        String   @unique
-  goldBalance   Decimal  @default(0) @db.Decimal(10, 4)
-  silverBalance Decimal  @default(0) @db.Decimal(10, 4)
+  goldBalance   Decimal  @default(0) @db.Decimal(10, 3)
+  silverBalance Decimal  @default(0) @db.Decimal(10, 3)
   rupeeBalance  Decimal  @default(0) @db.Decimal(10, 2)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  pledgedGold   Decimal  @default(0) @db.Decimal(10, 4)
+  pledgedGold   Decimal  @default(0) @db.Decimal(10, 3)
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -99,7 +99,7 @@ model MetalTransaction {
   session_id          String?               @unique
   metalType           Metal
   transactionType     TransactionType
-  metalGrams          Decimal               @db.Decimal(10, 4)
+  metalGrams          Decimal               @db.Decimal(10, 3)
   ratePerGram         Decimal               @db.Decimal(10, 2)
   totalAmount         Decimal               @db.Decimal(10, 2)
   gst                 Decimal               @db.Decimal(10, 2)
@@ -111,6 +111,7 @@ model MetalTransaction {
   gstRate             Decimal               @default(3) @db.Decimal(5, 2)
   razorpay_order_id   String?
   razorpay_payment_id String?
+  razorpay_signature String?
   remark              String?
   createdAt           DateTime              @default(now())
   metalGiftId         String?               @unique
@@ -129,12 +130,14 @@ model MetalPurchaseSession {
   user_id         String
   metalType       Metal
   transactionType TransactionType
-  metalGrams      Decimal               @db.Decimal(10, 4)
+  metalGrams      Decimal               @db.Decimal(10, 3)
   locked_rate     Decimal               @db.Decimal(10, 2)
   totalAmount     Decimal               @db.Decimal(10, 2)
   gst             Decimal               @db.Decimal(10, 2)
   gstRate         Decimal               @default(3) @db.Decimal(5, 2)
   finalAmount     Decimal               @db.Decimal(10, 2)
+  razorpay_order_id String?
+  razorpay_payment_id String?
   status          PurchaseSessionStatus @default(ACTIVE)
   started_at      DateTime              @default(now())
   expires_at      DateTime
@@ -292,8 +295,8 @@ model GoldGoal {
   userId           String
   targetAmount     Decimal    @db.Decimal(10, 2)
   currentAmount    Decimal    @default(0) @db.Decimal(10, 2)
-  targetGrams      Decimal    @db.Decimal(10, 4)
-  currentGrams     Decimal    @default(0) @db.Decimal(10, 4)
+  targetGrams      Decimal    @db.Decimal(10, 3)
+  currentGrams     Decimal    @default(0) @db.Decimal(10, 3)
   autoAllocate     Boolean    @default(false)
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
@@ -313,13 +316,13 @@ model MetalGift {
   recipientId      String
   giftType         GiftType          @default(VIRTUAL)
   metalType        Metal
-  metalGrams       Decimal?          @db.Decimal(10, 4)
+  metalGrams       Decimal?          @db.Decimal(10, 3)
   coinQuantity     Int?
   message          String?
   occasion         String?
   createdAt        DateTime          @default(now())
   status           GiftStatus        @default(COMPLETED)
-  coinGrams        Decimal?          @db.Decimal(10, 4)
+  coinGrams        Decimal?          @db.Decimal(10, 3)
   recipient        User              @relation("ReceivedGifts", fields: [recipientId], references: [id], onDelete: Cascade)
   sender           User              @relation("SentGifts", fields: [senderId], references: [id], onDelete: Cascade)
   metalTransaction MetalTransaction?
@@ -374,6 +377,7 @@ model CoinTransaction {
   payment_mode        PaymentMode
   razorpay_order_id   String?
   razorpay_payment_id String?
+  razorpay_signature String?
   status              TransactionStatus    @default(PENDING)
   created_at          DateTime             @default(now())
   lockedCart          LockedCart?          @relation(fields: [locked_cart_id], references: [id])
@@ -487,7 +491,7 @@ model Sip {
   end_date          DateTime?
   status            SipStatus        @default(ACTIVE)
   total_invested    Decimal          @db.Decimal(10, 2)
-  total_grams       Decimal          @db.Decimal(10, 4)
+  total_grams       Decimal          @db.Decimal(10, 3)
   installments_paid Int
   next_execution_at DateTime
   created_at        DateTime         @default(now())
@@ -503,7 +507,7 @@ model SipTransaction {
   user_id     String
   amount      Decimal              @db.Decimal(10, 2)
   metal_rate  Decimal              @db.Decimal(10, 2)
-  grams       Decimal              @db.Decimal(10, 4)
+  grams       Decimal              @db.Decimal(10, 3)
   gst         Decimal              @db.Decimal(10, 2)
   gst_rate    Int
   status      SipTransactionStatus

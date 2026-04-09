@@ -167,7 +167,7 @@ export const convertWalletGoldToCoin = async (
 
   const requiredGold = coinGrams * quantity;
 
-  const wallet = await prisma.wallet.findUnique({
+  const wallet = await prisma.inventory.findUnique({
     where: { userId },
   });
 

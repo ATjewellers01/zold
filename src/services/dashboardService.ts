@@ -8,7 +8,7 @@ export const getDashboardMetricsService = async () => {
     _count: true,
   });
 
-  const walletsSum = await prisma.wallet.aggregate({
+  const walletsSum = await prisma.inventory.aggregate({
     _sum: {
       goldBalance: true,
       pledgedGold: true,

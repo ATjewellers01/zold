@@ -1,8 +1,9 @@
 import prisma from "../config/db.js";
+import { razorpay } from "../config/razorpay.js";
+import { createHmac } from "crypto";
+
 import { getCurrentGoldRate, getCurrentSilverRate } from "./metalRateService.js";
 import { getCurrentGstRate, getCurrentGstRateWhole } from "./gstService.js";
-import { getOrCreateTestWallet } from "./testWalletService.js";
-import { allocateToGoals } from "./goldGoalService.js";
 
 export const initiateMetalPurchaseSessionService = async (
     userId: string,
@@ -26,6 +27,10 @@ export const initiateMetalPurchaseSessionService = async (
     } else if (metalType === "SILVER") {
         const rate = await getCurrentSilverRate();
         ratePerGram = transactionType === "BUY" ? rate.buyRate : rate.sellRate;
+    }
+
+    if (!ratePerGram || ratePerGram <= 0) {
+        throw new Error(`${metalType} rate unavailable`)
     }
 
     const totalAmount = metalGrams * ratePerGram;
@@ -62,11 +67,9 @@ export const initiateMetalPurchaseSessionService = async (
     return { session };
 };
 
-export const executeMetalPurchaseService = async (
+export const createRazorpayOrderService = async (
     userId: string,
     sessionId: string,
-    paymentMode: "WALLET" | "UPI" | "RAZORPAY" = "WALLET",
-    storageType: string = "vault"
 ) => {
     const session = await prisma.metalPurchaseSession.findFirst({
         where: { id: sessionId, user_id: userId, status: "ACTIVE" }
@@ -84,100 +87,155 @@ export const executeMetalPurchaseService = async (
         throw new Error("Session has expired");
     }
 
-    const { metalType, transactionType, metalGrams, finalAmount } = session;
-
-    if (transactionType === "BUY") {
-        const testWallet = await prisma.testWallet.findUnique({ where: { userId } });
-        if (!testWallet || testWallet.virtualBalance < finalAmount) {
-            throw new Error("Insufficient test wallet balance");
-        }
+    if (session.transactionType !== "BUY") {
+        throw new Error("SELL flow does not use Razorpay");
     }
-    else if (transactionType === "SELL") {
-        const wallet = await prisma.wallet.findUnique({ where: { userId } });
-        if (!wallet) {
-            throw new Error("Wallet not found");
-        }
-        const balance = metalType === "GOLD" ? wallet.goldBalance : wallet.silverBalance;
-        if (balance < metalGrams) {
-            throw new Error(`Insufficient ${metalType.toLowerCase()} balance`);
+
+    if (session.razorpay_order_id) {
+        return {
+            orderId: session.razorpay_order_id,
+            amount: Math.round(Number(session.finalAmount) * 100),
+            currency: "INR",
+            keyId: process.env.RAZORPAY_KEY_ID,
+            sessionId
         }
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-        await tx.metalPurchaseSession.update({
-            where: { id: sessionId },
-            data: { status: "COMPLETED" }
+    try {
+        const order = await razorpay.orders.create({
+            amount: Math.round(Number(session.finalAmount) * 100),
+            currency: "INR",
+            receipt: session.id
         });
 
-        let wallet = await tx.wallet.findUnique({ where: { userId: userId } });
-        if (!wallet) {
-            wallet = await tx.wallet.create({
-                data: { userId, goldBalance: 0, silverBalance: 0, rupeeBalance: 0 }
-            });
-        }
+        await prisma.metalPurchaseSession.update({
+            where: { id: session.id },
+            data: { razorpay_order_id: order.id }
+        });
 
-        if (metalType === "GOLD") {
-            await tx.wallet.update({
-                where: { userId },
-                data: {
-                    goldBalance: transactionType === "BUY" ?
-                        { increment: metalGrams } :
-                        { decrement: metalGrams }
-                }
-            });
-        }
-        else if (metalType === "SILVER") {
-            await tx.wallet.update({
-                where: { userId },
-                data: {
-                    silverBalance: transactionType === "BUY" ?
-                        { increment: metalGrams } :
-                        { decrement: metalGrams }
-                }
-            });
-        }
+        return {
+            orderId: order.id,
+            amount: order.amount,
+            currency: order.currency,
+            keyId: process.env.RAZORPAY_KEY_ID,
+            sessionId
+        };
+    }
+    catch (error) {
+        console.log("Razorpay order creation failed", error);
+        throw new Error("Payment gateway unavailable. Please try again");
+    }
+};
 
-        if (transactionType === "BUY") {
-            await getOrCreateTestWallet(tx, userId);
-            await tx.testWallet.update({
-                where: { userId: userId },
-                data: { virtualBalance: { decrement: finalAmount } }
-            });
-        }
+export const verifyRazorpayPaymentService = async (
+    userId: string,
+    sessionId: string,
+    orderId: string,
+    paymentId: string,
+    signature: string
+) => {
+
+    const session = await prisma.metalPurchaseSession.findFirst({
+        where: { razorpay_payment_id: paymentId, status: "COMPLETED" }
+    });
+
+    if (session) {
+        const [transaction, inventory] = await Promise.all([
+            prisma.metalTransaction.findFirst({
+                where: {
+                    user_id: userId,
+                    session_id: sessionId,
+                    razorpay_order_id: orderId,
+                    razorpay_payment_id: paymentId,
+                    status: "COMPLETED"
+                }
+            }),
+
+            prisma.inventory.findUnique({
+                where: { userId }
+            })
+        ]);
+
+        return { session, transaction, inventory };
+    }
+
+    const paymentSession = await prisma.metalPurchaseSession.findFirst({
+        where: { id: sessionId, user_id: userId, status: "ACTIVE" }
+    });
+
+    if (paymentSession?.razorpay_order_id !== orderId) {
+        throw new Error("Invalid transaction");
+    }
+
+    const expected = createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
+        .update(`${orderId}|${paymentId}`)
+        .digest("hex");
+
+    if (expected !== signature) {
+        throw new Error("Invalid transaction");
+    }
+
+    const verifiedPayment = await prisma.$transaction(async (tx) => {
+        const session = await tx.metalPurchaseSession.update({
+            where: {
+                id: paymentSession!.id,
+                user_id: paymentSession!.user_id,
+                razorpay_order_id: orderId,
+            },
+            data: {
+                razorpay_payment_id: paymentId,
+                status: "COMPLETED"
+            }
+        });
 
         const transaction = await tx.metalTransaction.create({
             data: {
                 user_id: userId,
-                session_id: sessionId,
-                metalType,
-                transactionType,
-                metalGrams,
+                session_id: session.id,
+                metalType: session.metalType,
+                transactionType: session.transactionType,
+                metalGrams: session.metalGrams,
                 ratePerGram: session.locked_rate,
                 totalAmount: session.totalAmount,
                 gst: session.gst,
-                gstRate: session.gstRate,
                 finalAmount: session.finalAmount,
-                paymentMode,
-                status: transactionType === "BUY" ? "COMPLETED" : "PENDING",
-                storageType
+                paymentMode: "RAZORPAY",
+                status: "COMPLETED",
+                purchaseRate: session.locked_rate,
+                gstRate: session.gstRate,
+                razorpay_order_id: orderId,
+                razorpay_payment_id: paymentId,
+                razorpay_signature: signature
             }
         });
 
-        return transaction;
+        let inventory;
+        if (transaction.metalType === "GOLD") {
+            inventory = await tx.inventory.upsert({
+                where: { userId },
+                create: {
+                    userId,
+                    goldBalance: transaction.metalGrams
+                },
+                update: { goldBalance: { increment: transaction.metalGrams } }
+            });
+        }
+        else if (transaction.metalType === "SILVER") {
+            inventory = await tx.inventory.upsert({
+                where: { userId },
+                create: {
+                    userId,
+                    silverBalance: transaction.metalGrams
+                },
+                update: { silverBalance: { increment: transaction.metalGrams } }
+            });
+        }
+
+        return { session, transaction, inventory };
     });
 
-    let goalAllocationResult;
-    if(metalType === "GOLD" && transactionType === "BUY") {
-        try {
-            goalAllocationResult = await allocateToGoals(userId, metalGrams, session.totalAmount);
-        }
-        catch(error) {
-            console.error("Goal allocation failed: (non-critical, it doesn't affect original purchase in any way)")
-        }
-    }
-
-    return { result, goalAllocationResult };
-};
+    return verifiedPayment;
+}
 
 export const cancelMetalPurchaseSessionService = async (userId: string, sessionId: string) => {
     const session = await prisma.metalPurchaseSession.findFirst({

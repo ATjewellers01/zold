@@ -9,12 +9,12 @@ import { getCurrentGoldRate, getCurrentSilverRate } from "./metalRateService.js"
 export const getUserWalletBalance = async (
   userId: string,
 ): Promise<WalletBalance> => {
-  let wallet = await prisma.wallet.findUnique({
+  let wallet = await prisma.inventory.findUnique({
     where: { userId },
   });
 
   if (!wallet) {
-    wallet = await prisma.wallet.create({
+    wallet = await prisma.inventory.create({
       data: { userId },
     });
   }
@@ -84,7 +84,7 @@ export const getWalletStats = async (userId: string): Promise<WalletStats> => {
     };
   }
 
-  const wallet = await prisma.wallet.findUnique({ where: { userId } });
+  const wallet = await prisma.inventory.findUnique({ where: { userId } });
 
   const goldTransactions = transactions.filter(tx => tx.metalType === "GOLD");
   const silverTransactions = transactions.filter(tx => tx.metalType === "SILVER");

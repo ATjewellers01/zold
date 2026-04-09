@@ -60,7 +60,7 @@ async function createPartner(data) {
     });
     
     // Create wallet for partner user
-    await prisma.wallet.create({
+    await prisma.inventory.create({
       data: {
         userId: user.id,
         goldBalance: 0,

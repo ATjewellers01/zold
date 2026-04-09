@@ -142,7 +142,7 @@ export const createPartnerAccountService = async (data: {
     },
   });
 
-  await prisma.wallet.create({
+  await prisma.inventory.create({
     data: {
       userId: user.id,
       goldBalance: 0,

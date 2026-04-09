@@ -2,9 +2,10 @@ import { Response } from "express";
 import { AuthenticatedRequest } from "../types/index.js";
 import {
     initiateMetalPurchaseSessionService,
-    executeMetalPurchaseService,
     getActiveSessionService,
-    cancelMetalPurchaseSessionService
+    cancelMetalPurchaseSessionService,
+    createRazorpayOrderService,
+    verifyRazorpayPaymentService
 } from "../services/metalPurchaseSessionService.js"
 
 const VALID_METALS = ["GOLD", "SILVER"] as const;
@@ -64,22 +65,19 @@ export const initiateMetalPurchaseSession = async (req: AuthenticatedRequest, re
     }
 };
 
-export const checkoutMetalPurchase = async (req: AuthenticatedRequest, res: Response) => {
+export const createRazorpayOrder = async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user!.id;
-        const sessionId = req.body?.sessionId || req.metalPurchaseSession?.id;
-        const { paymentMode, storageType } = req.body;
+        const sessionId = req.metalPurchaseSession!.id;
 
-        const result = await executeMetalPurchaseService(
+        const result = await createRazorpayOrderService(
             userId,
             sessionId,
-            paymentMode || "WALLET",
-            storageType || "vault"
         );
 
-        return res.status(200).json({
+        return res.status(201).json({
             success: true,
-            message: "Transaction completed successfully",
+            message: "Order created successfully",
             data: result
         });
 
@@ -87,6 +85,31 @@ export const checkoutMetalPurchase = async (req: AuthenticatedRequest, res: Resp
         return res.status(400).json({
             success: false,
             message: error.message || "Checkout failed"
+        });
+    }
+};
+
+export const verifyRazorPayment = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { sessionId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+        const result = await verifyRazorpayPaymentService(
+            userId, 
+            sessionId, razorpay_order_id,
+            razorpay_payment_id,
+            razorpay_signature
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Payment successfully verified",
+            data: result
+        });
+    }
+    catch(error: any) {
+        return res.status(400).json({
+            success: false,
+            message: error.message || "Payment verification failed"
         });
     }
 };

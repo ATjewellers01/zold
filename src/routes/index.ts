@@ -12,10 +12,10 @@ import goldGoalRoutes from "./goldGoalRoutes.js";
 import referralRoutes from "./referralRoutes.js";
 import coinRoutes from "./coinRoutes.js";
 import paymentMethodRoutes from "./paymentMethodRoutes.js";
-import coinPurchaseSessionRoute from "./coinPurchaseSessionRoute.js";
-import metalPurchaseSessionRoutes from "./metalPurchaseSessionRoutes.js";
+import coinPurchaseSessionRoute from "./coinPurchaseRoute.js";
+import metalPurchaseSessionRoutes from "./metalPurchaseRoutes.js";
 import adminRoutes from "./adminRoutes.js";
-import metaRoutes from "./metaRoutes.js";
+import metaRoutes from "./metalGstRoutes.js";
 import metalGiftRoutes from "./metalGiftRoutes.js";
 import notificationRoutes from "./notificationRoutes.js";
 

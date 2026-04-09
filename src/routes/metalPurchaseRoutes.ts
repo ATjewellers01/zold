@@ -1,5 +1,12 @@
 import { Router } from "express";
-import { initiateMetalPurchaseSession, checkoutMetalPurchase, getActiveSession, cancelMetalPurchaseSession } from "../controllers/metalPurchaseSessionController.js";
+
+import { 
+  initiateMetalPurchaseSession, 
+  getActiveSession, 
+  cancelMetalPurchaseSession, 
+  createRazorpayOrder, 
+  verifyRazorPayment 
+} from "../controllers/metalPurchaseSessionController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { validateMetalPurchaseSession } from "../middlewares/metalPurchaseSessionMiddleware.js";
 
@@ -18,10 +25,16 @@ router.post(
 );
 
 router.post(
-  "/checkout",
+  "/create-order",
   authMiddleware,
   validateMetalPurchaseSession,
-  checkoutMetalPurchase
+  createRazorpayOrder
+);
+
+
+router.post("/verify-payment",
+  authMiddleware,
+  verifyRazorPayment
 );
 
 router.post(
