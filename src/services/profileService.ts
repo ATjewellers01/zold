@@ -17,7 +17,7 @@ interface UserProfile {
   isVerified: boolean;
   createdAt: Date;
   profilePicture: string | null;
-  wallet: { goldBalance: number; rupeeBalance: number } | null;
+  inventory: { goldBalance: number; rupeeBalance: number } | null;
   kyc: {
     status: string;
     panNumber: string | null;
@@ -41,7 +41,7 @@ export const getUserProfile = async (
       isVerified: true,
       createdAt: true,
       profilePicture: true,
-      wallet: {
+      inventory: {
         select: {
           goldBalance: true,
           rupeeBalance: true,
@@ -62,10 +62,10 @@ export const getUserProfile = async (
 
   return {
     ...user,
-    wallet: user.wallet
+    inventory: user.inventory
       ? {
-          goldBalance: parseFloat(String(user.wallet.goldBalance)),
-          rupeeBalance: parseFloat(String(user.wallet.rupeeBalance)),
+          goldBalance: parseFloat(String(user.inventory.goldBalance)),
+          rupeeBalance: parseFloat(String(user.inventory.rupeeBalance)),
         }
       : null,
     kyc: user.kyc

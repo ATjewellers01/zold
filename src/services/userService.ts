@@ -29,7 +29,7 @@ export const getAllUsers = async (): Promise<UserResponse[]> => {
       role: true,
       isVerified: true,
       phone: true,
-      wallet: {
+      inventory: {
         select: {
           goldBalance: true,
           silverBalance: true,

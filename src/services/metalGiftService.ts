@@ -33,20 +33,20 @@ export const sendGiftToRecipient = async (userId: string, recipientId: string, g
     const totalAmount = gramsNum * ratePerGram;
 
     return await prisma.$transaction(async (tx) => {
-      const [senderWallet, sender] = await Promise.all([
-        tx.wallet.findUnique({ where: { userId } }),
+      const [senderInventory, sender] = await Promise.all([
+        tx.inventory.findUnique({ where: { userId } }),
         tx.user.findUnique({ where: { id: userId }, select: { name: true } }),
       ]);
 
-      if (!senderWallet) throw new Error("Sender wallet not found");
+      if (!senderInventory) throw new Error("Sender inventory not found");
 
       const senderBalance = metalType === "GOLD"
-        ? parseFloat(String(senderWallet.goldBalance))
-        : parseFloat(String(senderWallet.silverBalance));
+        ? parseFloat(String(senderInventory.goldBalance))
+        : parseFloat(String(senderInventory.silverBalance));
 
       if (senderBalance < gramsNum) throw new Error("Not enough balance");
 
-      await tx.wallet.upsert({
+      await tx.inventory.upsert({
         where: { userId: recipientId },
         update: metalType === "GOLD"
           ? { goldBalance: { increment: metalGrams } }
@@ -58,7 +58,7 @@ export const sendGiftToRecipient = async (userId: string, recipientId: string, g
         }
       });
 
-      await tx.wallet.update({
+      await tx.inventory.update({
         where: { userId },
         data: metalType === "GOLD"
           ? { goldBalance: { decrement: metalGrams } }
