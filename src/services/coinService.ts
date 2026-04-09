@@ -183,7 +183,7 @@ export const convertWalletGoldToCoin = async (
   const goldValue = requiredGold * ratePerGram;
 
   const result = await prisma.$transaction(async (tx) => {
-    const updatedWallet = await tx.wallet.update({
+    const updatedWallet = await tx.inventory.update({
       where: { userId },
       data: {
         goldBalance: { decrement: requiredGold },

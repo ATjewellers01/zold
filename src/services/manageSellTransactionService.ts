@@ -46,7 +46,7 @@ export const rejectSellTransactionService = async (transactionId: string, remark
             data: { status: "REJECTED", remark: remark || `Rejected by admin ${adminId}` }
         });
 
-        const updatedWallet = await tx.wallet.update({
+        const updatedWallet = await tx.inventory.update({
             where: { userId: transaction.user_id },
             data: transaction.metalType === "GOLD"
             ? { goldBalance: { increment: transaction.metalGrams } }
