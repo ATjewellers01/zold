@@ -2,10 +2,12 @@ import { Response } from "express";
 import { AuthenticatedRequest } from "../types/index.js";
 import {
     initiateMetalPurchaseSessionService,
-    getActiveSessionService,
+    getMetalActiveSessionService,
     cancelMetalPurchaseSessionService,
     createMetalRzpOrderService,
-    verifyMetalRzpPaymentService
+    verifyMetalRzpPaymentService,
+    executeMetalSellService,
+    failedMetalRzpPaymentService
 } from "../services/metalPurchaseSessionService.js"
 
 const VALID_METALS = ["GOLD", "SILVER"] as const;
@@ -89,24 +91,30 @@ export const createMetalRazorpayOrder = async (req: AuthenticatedRequest, res: R
     }
 };
 
-export const verifyMetalRazorPayment = async (req, res) => {
+export const verifyMetalRazorPayment = async (req: AuthenticatedRequest, res: Response) => {
+    const { sessionId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+    if (!sessionId || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+        return res.status(400).json({
+            success: false,
+            message: "sessionId, razorpay_order_id, razorpay_payment_id and razorpay_signature are required"
+        });
+    }
+
     try {
-        const userId = req.user.id;
-        const { sessionId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
         const result = await verifyMetalRzpPaymentService(
-            userId, 
-            sessionId, razorpay_order_id,
+            req.user!.id,
+            sessionId,
+            razorpay_order_id,
             razorpay_payment_id,
             razorpay_signature
         );
-
         return res.status(200).json({
             success: true,
             message: "Payment successfully verified",
             data: result
         });
-    }
-    catch(error: any) {
+    } catch (error: any) {
         return res.status(400).json({
             success: false,
             message: error.message || "Payment verification failed"
@@ -117,7 +125,7 @@ export const verifyMetalRazorPayment = async (req, res) => {
 export const getActiveSession = async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user!.id;
-        const result = await getActiveSessionService(userId);
+        const result = await getMetalActiveSessionService(userId);
 
         return res.status(200).json({
             success: true,
@@ -127,6 +135,56 @@ export const getActiveSession = async (req: AuthenticatedRequest, res: Response)
         return res.status(500).json({
             success: false,
             message: error.message || "Failed to fetch active session"
+        });
+    }
+};
+
+export const executeMetalSell = async (req: AuthenticatedRequest, res: Response) => {
+    const { sessionId } = req.body;
+
+    if (!sessionId) {
+        return res.status(400).json({ success: false, message: "sessionId is required" });
+    }
+
+    try {
+        const result = await executeMetalSellService(req.user!.id, sessionId);
+        return res.status(200).json({
+            success: true,
+            message: "Sale confirmed. Amount will be credited after admin approval.",
+            data: result
+        });
+    } catch (error: any) {
+        return res.status(400).json({ success: false, message: error.message || "Failed to confirm sale" });
+    }
+};
+
+export const failedMetalRazorPayment = async (req: AuthenticatedRequest, res: Response) => {
+    const { sessionId, razorpay_order_id, razorpay_payment_id, reason } = req.body;
+
+    if (!sessionId || !razorpay_order_id || !razorpay_payment_id) {
+        return res.status(400).json({
+            success: false,
+            message: "sessionId, razorpay_order_id, and razorpay_payment_id are required"
+        });
+    }
+
+    try {
+        const result = await failedMetalRzpPaymentService(
+            req.user!.id,
+            sessionId,
+            razorpay_order_id,
+            razorpay_payment_id,
+            reason || "Payment failed"
+        );
+        return res.status(200).json({
+            success: true,
+            message: "Payment failure recorded",
+            data: result
+        });
+    } catch (error: any) {
+        return res.status(400).json({
+            success: false,
+            message: error.message || "Failed to record payment failure"
         });
     }
 };

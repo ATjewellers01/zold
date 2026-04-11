@@ -73,30 +73,7 @@ export const buyCoinWithRupees = async (
   const gst = goldValue * gstMultiplier;
   const finalAmount = goldValue + gst;
 
-  let testWallet = await prisma.testWallet.findUnique({
-    where: { userId },
-  });
-
-  if (!testWallet) {
-    testWallet = await prisma.testWallet.create({
-      data: { userId, virtualBalance: 10000 },
-    });
-  }
-
-  if (parseFloat(String(testWallet.virtualBalance)) < finalAmount) {
-    throw new Error(
-      `Insufficient test wallet balance. Required: ₹${finalAmount.toFixed(2)}, Available: ₹${parseFloat(String(testWallet.virtualBalance)).toFixed(2)}`,
-    );
-  }
-
   const result = await prisma.$transaction(async (tx) => {
-    const updatedTestWallet = await tx.testWallet.update({
-      where: { userId },
-      data: {
-        virtualBalance: { decrement: finalAmount },
-      },
-    });
-
     const existingInventory = await tx.coinInventory.findUnique({
       where: {
         userId_coinGrams_metal: { userId, coinGrams, metal: "GOLD" },
@@ -143,7 +120,6 @@ export const buyCoinWithRupees = async (
     return {
       transaction,
       updatedInventory,
-      updatedTestWallet,
     };
   });
 

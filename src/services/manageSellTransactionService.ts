@@ -1,34 +1,20 @@
 import prisma from "../config/db.js"
 
 export const approveSellTransactionService = async (transactionId: string, adminId: string) => {
-    const transaction = await prisma.metalTransaction.findFirst({
-        where: { id: transactionId, transactionType: "SELL", status: "PENDING" }
+    // Atomic guard: if two admins click approve simultaneously, only one wins
+    const updateResult = await prisma.metalTransaction.updateMany({
+        where: { id: transactionId, transactionType: "SELL", status: "PENDING" },
+        data: { status: "COMPLETED", remark: `Approved by admin ${adminId}` }
     });
 
-    if(!transaction) {
-        throw new Error("Transaction not found");
+    if (updateResult.count === 0) {
+        const existing = await prisma.metalTransaction.findUnique({ where: { id: transactionId } });
+        if (!existing) throw new Error("Transaction not found");
+        throw new Error(`Transaction is already ${existing.status.toLowerCase()}`);
     }
 
-    const approve = await prisma.$transaction(async (tx) => {
-        await tx.metalTransaction.update({
-            where: { id: transactionId },
-            data: { status: "COMPLETED", remark: `Approved by admin ${adminId}` }
-        })
-
-        const updatedTestWallet = await tx.testWallet.upsert({
-            where: { userId: transaction.user_id },
-            update: { virtualBalance: { increment: transaction.finalAmount }},
-            create: {
-                userId: transaction.user_id,
-                virtualBalance: transaction.finalAmount,
-                createdAt: new Date()
-            }
-        })
-
-        return updatedTestWallet;
-    });
-
-    return { approve }
+    const transaction = await prisma.metalTransaction.findUnique({ where: { id: transactionId } });
+    return { transaction };
 };
 
 export const rejectSellTransactionService = async (transactionId: string, remark: string, adminId: string) => {
@@ -36,25 +22,34 @@ export const rejectSellTransactionService = async (transactionId: string, remark
         where: { id: transactionId, transactionType: "SELL", status: "PENDING" }
     });
 
-    if(!transaction) {
-        throw new Error("Transaction not found");
+    if (!transaction) {
+        const existing = await prisma.metalTransaction.findUnique({ where: { id: transactionId } });
+        if (!existing) throw new Error("Transaction not found");
+        throw new Error(`Transaction is already ${existing.status.toLowerCase()}`);
     }
 
-    const reject = await prisma.$transaction(async (tx) => {
-        const updatedStatus = await tx.metalTransaction.update({
-            where: { id: transactionId },
+    return await prisma.$transaction(async (tx) => {
+        // Atomic guard: prevents double-rejection restoring balance twice
+        const updateResult = await tx.metalTransaction.updateMany({
+            where: { id: transactionId, transactionType: "SELL", status: "PENDING" },
             data: { status: "REJECTED", remark: remark || `Rejected by admin ${adminId}` }
         });
 
-        const updatedWallet = await tx.inventory.update({
+        if (updateResult.count === 0) {
+            throw new Error("Already processed");
+        }
+
+        // Return the metal to the user's inventory
+        const updatedInventory = await tx.inventory.update({
             where: { userId: transaction.user_id },
             data: transaction.metalType === "GOLD"
-            ? { goldBalance: { increment: transaction.metalGrams } }
-            : { silverBalance: { increment: transaction.metalGrams } }
+                ? { goldBalance: { increment: transaction.metalGrams } }
+                : { silverBalance: { increment: transaction.metalGrams } }
         });
 
-        return { updatedStatus, updatedWallet };
+        return {
+            transaction: { ...transaction, status: "REJECTED" as const },
+            inventory: updatedInventory
+        };
     });
-
-    return reject;
 };

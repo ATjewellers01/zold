@@ -1,9 +1,11 @@
 import { Router } from "express";
 import {
-    addToPrimaryCart,
+    addCartItem,
+    removeCartItem,
     cancelCoinPurchaseSession,
     createCoinRazorpayOrder,
     failedCoinRazorPayment,
+    getActiveCoinSession,
     initiateCoinPurchaseSession,
     verifyCoinRazorPayment
 } from "../controllers/coinPurchaseSessionController.js";
@@ -11,8 +13,10 @@ import { authMiddleware } from "../middlewares/authMiddleware.js";
 
 const router = Router();
 
-router.post("/cart", authMiddleware, addToPrimaryCart);
-router.post("/checkout/:cartId", authMiddleware, initiateCoinPurchaseSession);
+router.get("/active", authMiddleware, getActiveCoinSession);
+router.post("/cart/item", authMiddleware, addCartItem);
+router.delete("/cart/item", authMiddleware, removeCartItem);
+router.post("/checkout", authMiddleware, initiateCoinPurchaseSession);
 router.post("/create-order", authMiddleware, createCoinRazorpayOrder);
 router.post("/verify-payment", authMiddleware, verifyCoinRazorPayment);
 router.post("/record-failure", authMiddleware, failedCoinRazorPayment);

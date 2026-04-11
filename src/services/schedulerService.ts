@@ -1,6 +1,5 @@
 import cron from "node-cron";
 import { clearOldSessionsService } from "./sessionCleanerService.js";
-import { clearIncativeMetalRate } from "./metalRateCleanerService.js";
 
 export const startScheduler = () => {
     cron.schedule("*/15 * * * *", async () => {
@@ -10,16 +9,6 @@ export const startScheduler = () => {
         }
         catch (error) {
             console.log("Session cleanup failed:", error);
-        }
-    });
-
-    cron.schedule("0 0 * * 0", async () => {
-        console.log("Running metal inactive prices cleanup");
-        try {
-            await clearIncativeMetalRate();
-        }
-        catch(error) {
-            console.log("Metal inacative prices cleanup failed...", error);
         }
     });
 };

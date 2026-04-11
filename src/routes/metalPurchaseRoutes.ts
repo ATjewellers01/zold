@@ -1,11 +1,13 @@
 import { Router } from "express";
 
-import { 
-  initiateMetalPurchaseSession, 
-  getActiveSession, 
-  cancelMetalPurchaseSession, 
+import {
+  initiateMetalPurchaseSession,
+  getActiveSession,
+  cancelMetalPurchaseSession,
   createMetalRazorpayOrder,
-  verifyMetalRazorPayment
+  verifyMetalRazorPayment,
+  executeMetalSell,
+  failedMetalRazorPayment
 } from "../controllers/metalPurchaseSessionController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { validateMetalPurchaseSession } from "../middlewares/metalPurchaseSessionMiddleware.js";
@@ -35,6 +37,16 @@ router.post(
 router.post("/verify-payment",
   authMiddleware,
   verifyMetalRazorPayment
+);
+
+router.post("/checkout",
+  authMiddleware,
+  executeMetalSell
+);
+
+router.post("/payment-failed",
+  authMiddleware,
+  failedMetalRazorPayment
 );
 
 router.post(
