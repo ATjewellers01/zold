@@ -370,7 +370,7 @@ model CoinTransaction {
   status              TransactionStatus    @default(PENDING)
   remark String?
   created_at          DateTime             @default(now())
-  session             CoinPurchaseSession? @relation(fields: [session_id], references: [session_id])
+  session             CoinPurchaseSession? @relation(fields: [session_id], references: [id])
   user                User                 @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
@@ -381,7 +381,7 @@ model CoinTransaction {
 }
 
 model CoinPurchaseSession {
-  session_id   String                @id @default(uuid())
+  id   String                @id @default(uuid())
   user_id      String
   started_at   DateTime              @default(now())
   expires_at   DateTime
@@ -426,7 +426,7 @@ model LockedCart {
   gold_locked_price   Decimal             @db.Decimal(10, 2)
   silver_locked_price Decimal             @db.Decimal(10, 2)
   gstRate             Decimal             @default(3) @db.Decimal(5, 2)
-  session             CoinPurchaseSession @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
+  session             CoinPurchaseSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
   user                User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
   items               LockedCartItem[]
 

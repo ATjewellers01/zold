@@ -8,7 +8,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import indexRoutes from "./routes/index.js";
-import { startScheduler } from "./services/schedulerService.js";
+import { startScheduler } from "./services/scheduler_service.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,7 +22,6 @@ const isProd = process.env.NODE_ENV === "production";
 const allowedOrigins = [
   "http://localhost:3005",
   "http://localhost:3000",
-  "https://zold-frontend-ttwl.vercel.app",
   "https://zold-frontend-mzjh.vercel.app",
   process.env.FRONTEND_URL,
 ].filter(Boolean) as string[];
@@ -99,7 +98,7 @@ server.listen(PORT, () => {
 
   startScheduler();
 
-  import("./services/metalPriceUpdateService.js").then(
+  import("./services/metal_price_update.service.js").then(
     ({ startMetalPriceUpdates }) => {
       startMetalPriceUpdates(io);
     },
