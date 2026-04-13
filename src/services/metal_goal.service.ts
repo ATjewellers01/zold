@@ -1,13 +1,14 @@
 import prisma from "../config/db.js";
+import { Metal } from "../../generated/prisma/index.js";
 
 export const createGoalService = async (userId, goalDetails) => {
-  const { 
+  const {
     goalName,
     metalType,
-    goalCategory, 
-    targetAmount, 
-    targetGrams, 
-    paymentFrequency, 
+    goalCategory,
+    targetAmount,
+    targetGrams,
+    paymentFrequency,
     targetDate,
     completionDate
   }  = goalDetails;
@@ -16,11 +17,11 @@ export const createGoalService = async (userId, goalDetails) => {
     data: {
       userId,
       metal: metalType,
-      goalName, 
-      goalCategory, 
+      goalName,
+      goalCategory,
       targetAmount: targetAmount ? targetAmount : 0,
-      targetGrams: targetGrams ? targetGrams : 0, 
-      paymentFrequency, 
+      targetGrams: targetGrams ? targetGrams : 0,
+      paymentFrequency,
       targetDate: new Date(targetDate)
     }
   });
@@ -48,13 +49,15 @@ export const getGoalHistoryService = async (userId: string) => {
 };
 
 export const allocateToGoals = async (
-    userId,
-    purchasedGrams,
-    purchasedAmount
+    userId: string,
+    metal: Metal,
+    purchasedGrams: number,
+    purchasedAmount: number
 ) => {
-    const hasActiveGoals = await prisma.metalGoal.findMany({
+    const activeGoals = await prisma.metalGoal.findMany({
         where: {
             userId,
+            metal,
             status: "ACTIVE"
         },
         orderBy: {
@@ -62,16 +65,17 @@ export const allocateToGoals = async (
         }
     });
 
-    if (!hasActiveGoals.length) {
+    if (!activeGoals.length) {
         return null;
     }
 
     let spillAmount = purchasedAmount;
     let spillGrams = purchasedGrams;
-    for(const goal of hasActiveGoals) {
+
+    for (const goal of activeGoals) {
         if (Number(goal.targetAmount) > 0 && Number(goal.targetGrams) === 0) {
             if (goal.currentAmount.add(spillAmount).greaterThanOrEqualTo(goal.targetAmount)) {
-                const amountNeeded = goal.targetAmount.sub(goal.currentAmount);
+                const amountNeeded = Number(goal.targetAmount.sub(goal.currentAmount));
                 await prisma.metalGoal.updateMany({
                     where: { id: goal.id },
                     data: {
@@ -80,7 +84,7 @@ export const allocateToGoals = async (
                         completionDate: new Date()
                     }
                 });
-                spillAmount = spillAmount.sub(amountNeeded);
+                spillAmount = spillAmount - amountNeeded;
             } else {
                 await prisma.metalGoal.updateMany({
                     where: { id: goal.id },
@@ -90,7 +94,7 @@ export const allocateToGoals = async (
             }
         } else if (Number(goal.targetGrams) > 0 && Number(goal.targetAmount) === 0) {
             if (goal.currentGrams.add(spillGrams).greaterThanOrEqualTo(goal.targetGrams)) {
-                const gramsNeeded = goal.targetGrams.sub(goal.currentGrams);
+                const gramsNeeded = Number(goal.targetGrams.sub(goal.currentGrams));
                 await prisma.metalGoal.updateMany({
                     where: { id: goal.id },
                     data: {
@@ -99,7 +103,7 @@ export const allocateToGoals = async (
                         completionDate: new Date()
                     }
                 });
-                spillGrams = spillGrams.sub(gramsNeeded);
+                spillGrams = spillGrams - gramsNeeded;
             } else {
                 await prisma.metalGoal.updateMany({
                     where: { id: goal.id },
@@ -109,5 +113,12 @@ export const allocateToGoals = async (
             }
         }
     }
-    
-}
+};
+
+export const deleteGoalService = async (userId, goalId) => {
+    await prisma.metalGoal.delete({
+        where: { id: goalId, userId }
+    });
+
+    return true;
+};

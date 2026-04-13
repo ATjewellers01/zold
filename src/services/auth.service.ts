@@ -111,7 +111,7 @@ export const signupService = async (
     data: {otp, otpExpiry },
   });
 
-  await sendOTP(newUser.email, otp);
+  await sendOTP(newUser.id, newUser.email, otp);
 
   return { role: "USER", referralCode: newReferralCode };
 };

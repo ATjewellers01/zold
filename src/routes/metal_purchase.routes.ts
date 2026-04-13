@@ -8,7 +8,7 @@ import {
   verifyMetalRazorPayment,
   executeMetalSell,
   failedMetalRazorPayment
-} from "../controllers/metal_purchase_session.controller.js";
+} from "../controllers/metal_purchase.controller.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { validateMetalPurchaseSession } from "../middlewares/metal_purchase.middleware.js";
 

@@ -4,6 +4,7 @@ import { createHmac } from "crypto";
 
 import { getCurrentGoldRate, getCurrentSilverRate } from "./metal_rate.service.js";
 import { getCurrentGstRate, getCurrentGstRateWhole } from "./gst.service.js";
+import { allocateToGoals } from "./metal_goal.service.js";
 
 export const initiateMetalPurchaseSessionService = async (
     userId: string,
@@ -214,7 +215,6 @@ export const verifyMetalRzpPaymentService = async (
         const transaction = await tx.metalTransaction.create({
             data: {
                 user_id: userId,
-                id: paymentSession.id,
                 metalType: paymentSession.metalType,
                 transactionType: paymentSession.transactionType,
                 metalGrams: paymentSession.metalGrams,
@@ -253,6 +253,16 @@ export const verifyMetalRzpPaymentService = async (
             inventory
         };
     });
+
+    // Allocate toward active goals — only for BUY, never SELL
+    if (paymentSession.transactionType === "BUY") {
+        await allocateToGoals(
+            userId,
+            paymentSession.metalType,
+            Number(paymentSession.metalGrams),
+            Number(paymentSession.totalAmount)
+        ).catch(e => console.error("Goal allocation failed:", e));
+    }
 
     return verifiedPayment;
 };
@@ -296,7 +306,6 @@ export const executeMetalSellService = async (userId: string, sessionId: string)
         const transaction = await tx.metalTransaction.create({
             data: {
                 user_id: userId,
-                id: session.id,
                 metalType: session.metalType,
                 transactionType: "SELL",
                 metalGrams: session.metalGrams,
@@ -331,23 +340,18 @@ export const executeMetalSellService = async (userId: string, sessionId: string)
 };
 
 export const cancelMetalPurchaseSessionService = async (userId: string, sessionId: string) => {
-    // Atomic guard: only cancel if no Razorpay order exists yet.
-    // Once an order is created, Razorpay can still process the payment independently —
-    // cancelling our session record would leave money deducted with no transaction record.
-    const result = await prisma.metalPurchaseSession.updateMany({
-        where: { id: sessionId, user_id: userId, status: "ACTIVE", razorpay_order_id: null },
-        data: { status: "CANCELLED" }
+    const session = await prisma.metalPurchaseSession.findFirst({
+        where: { id: sessionId, user_id: userId, status: "ACTIVE" }
     });
 
-    if (result.count === 0) {
-        const session = await prisma.metalPurchaseSession.findFirst({
-            where: { id: sessionId, user_id: userId }
-        });
-        if (!session || session.status !== "ACTIVE") {
-            throw new Error("No active session found to cancel");
-        }
-        throw new Error("Cannot cancel a session with an active payment.");
+    if (!session) {
+        throw new Error("No active session found to cancel");
     }
+
+    await prisma.metalPurchaseSession.update({
+        where: { id: sessionId, user_id: userId },
+        data: { status: "CANCELLED" }
+    });
 
     return { cancelled: true, sessionId };
 };

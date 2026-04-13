@@ -9,6 +9,7 @@ import {
 } from "../services/auth.service.js";
 import { sendOTP } from "../services/email.service.js";
 import { generateOtp } from "../utils/otp.js";
+import prisma from "../config/db.js";
 
 const handleError = (res: Response, error: any, fallback: string) => {
   const status = error?.status || 500;
@@ -44,11 +45,25 @@ export const signup = async (
 
 export const resendOtp = async (req, res) => {
   try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email is required" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "No account found with this email" });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ success: false, message: "Account is already verified" });
+    }
+
     const otp = generateOtp();
-    const result = await sendOTP(req.email, otp);
+    await sendOTP(user.id, email, otp);
     return res.status(200).json({
       success: true,
-      message: "Otp sent successfully",
+      message: "OTP sent successfully",
       data: {}
     });
   }

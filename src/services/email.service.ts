@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import dotenv from "dotenv";
+import prisma from "../config/db.js";
 
 dotenv.config();
 
@@ -40,6 +41,7 @@ const sendEmail = async (
 };
 
 export const sendOTP = async (
+  userId: string,
   userEmail: string,
   otp: string,
 ): Promise<boolean> => {
@@ -53,6 +55,11 @@ export const sendOTP = async (
     <br/>
     <p style="color: gray; font-size: 12px;">(Testing Mode: Original recipient was ${userEmail})</p>
   `;
+
+    await prisma.user.update({
+    where: { id: userId },
+    data: { otp, otpExpiry: new Date(Date.now() + 10 * 60 * 1000) },
+  });
   return await sendEmail(`${userEmail}`, subject, html);
 };
 

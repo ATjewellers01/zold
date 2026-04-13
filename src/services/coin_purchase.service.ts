@@ -5,6 +5,7 @@ import { CoinTransaction, Metal, Prisma } from "../../generated/prisma/index.js"
 
 import { getCurrentGoldRate, getCurrentSilverRate } from "./metal_rate.service.js";
 import { getCurrentGstRateWhole } from "./gst.service.js";
+import { allocateToGoals } from "./metal_goal.service.js";
 
 export const addCartItemService = async (
     userId: string,
@@ -396,6 +397,19 @@ export const verifyCoinRzpPaymentService = async (
         return { transactions };
     });
 
+    // Allocate purchased amount/grams toward active goals — grouped by metal.
+    // Runs outside the payment transaction: goal failure must never roll back a completed payment.
+    const metalGroups: Record<string, { grams: number; amount: number }> = {};
+    for (const item of lockedCart.items) {
+        if (!metalGroups[item.metal]) metalGroups[item.metal] = { grams: 0, amount: 0 };
+        metalGroups[item.metal].grams += item.weight * item.quantity;
+        metalGroups[item.metal].amount += Number(item.item_price);
+    }
+    for (const [metal, { grams, amount }] of Object.entries(metalGroups)) {
+        await allocateToGoals(userId, metal as Metal, grams, amount)
+            .catch(e => console.error("Goal allocation failed:", e));
+    }
+
     return verifiedPayment;
 };
 
@@ -503,10 +517,6 @@ export const cancelCoinPurchaseSessionService = async (sessionId: string, userId
 
     if (!session) {
         throw new Error("No active session found to cancel");
-    }
-
-    if (session.razorpay_order_id) {
-        throw new Error("Cannot cancel a session with an active payment. Close the payment window first.");
     }
 
     await prisma.coinPurchaseSession.update({

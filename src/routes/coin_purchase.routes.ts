@@ -9,7 +9,7 @@ import {
     getCart,
     initiateCoinPurchaseSession,
     verifyCoinRazorPayment
-} from "../controllers/coin_purchase_session.controller.js";
+} from "../controllers/coin_purchase.controller.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 
 const router = Router();
