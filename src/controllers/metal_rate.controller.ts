@@ -8,7 +8,6 @@ import {
 } from "../services/metal_rate.service.js";
 import { getGoldLivePrice } from "../services/gold_api.service.js";
 import { getSilverLivePrice } from "../services/silver_api_service.js";
-import { getUserCoinInventory } from "../services/coin.service.js";
 
 
 export const getCurrentMetalRate = async (

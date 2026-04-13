@@ -105,7 +105,6 @@ export const createMetalRzpOrderService = async (
         throw new Error("SELL flow does not use Razorpay");
     }
 
-    // Idempotent: if order already created, return it
     if (session.razorpay_order_id) {
         return {
             orderId: session.razorpay_order_id,

@@ -6,6 +6,7 @@ import {
     createCoinRazorpayOrder,
     failedCoinRazorPayment,
     getActiveCoinSession,
+    getCart,
     initiateCoinPurchaseSession,
     verifyCoinRazorPayment
 } from "../controllers/coin_purchase_session.controller.js";
@@ -14,6 +15,7 @@ import { authMiddleware } from "../middlewares/auth.middleware.js";
 const router = Router();
 
 router.get("/active", authMiddleware, getActiveCoinSession);
+router.get("/cart", authMiddleware, getCart);
 router.post("/cart/item", authMiddleware, addCartItem);
 router.delete("/cart/item", authMiddleware, removeCartItem);
 router.post("/checkout", authMiddleware, initiateCoinPurchaseSession);

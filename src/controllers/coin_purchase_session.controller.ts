@@ -8,6 +8,7 @@ import {
     createCoinRzpOrderService,
     failedCoinRzpPaymentService,
     getActiveCoinSessionService,
+    getCartService,
     initiateCoinPurchaseSessionService,
     verifyCoinRzpPaymentService
 } from "../services/coin_purchase.service.js";
@@ -74,7 +75,9 @@ export const initiateCoinPurchaseSession = async (req: AuthenticatedRequest, res
             message: "Session initiated successfully",
             data: result
         });
-    } catch (error: any) {
+    } 
+    catch (error: any) {
+        console.log(error);
         return res.status(400).json({ success: false, message: error.message || "Something went wrong" });
     }
 };
@@ -139,6 +142,15 @@ export const getActiveCoinSession = async (req: AuthenticatedRequest, res: Respo
     try {
         const result = await getActiveCoinSessionService(req.user!.id);
         return res.status(200).json({ success: true, data: result });
+    } catch (error: any) {
+        return res.status(400).json({ success: false, message: error.message || "Something went wrong" });
+    }
+};
+
+export const getCart = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const items = await getCartService(req.user!.id);
+        return res.status(200).json({ success: true, data: { items } });
     } catch (error: any) {
         return res.status(400).json({ success: false, message: error.message || "Something went wrong" });
     }

@@ -116,11 +116,16 @@ export const initiateCoinPurchaseSessionService = async (userId: string) => {
                 }
 
                 const updatedLockedCart = await tx.lockedCart.update({
-                    where: { id: existSession.id },
-                    data: { gold_locked_price: goldBuyRate, silver_locked_price: silverBuyRate, gstRate }
+                    where: { session_id: existSession.id },
+                    data: { 
+                        gold_locked_price: goldBuyRate, 
+                        silver_locked_price: silverBuyRate, 
+                        gstRate 
+                    }
                 });
 
-                await tx.lockedCartItem.deleteMany({ where: { locked_cart_id: updatedLockedCart.id } });
+                await tx.lockedCartItem.deleteMany({ 
+                    where: { locked_cart_id: updatedLockedCart.id } });
 
                 const lockedCartItems = cart.items.map(item => ({
                     locked_cart_id: updatedLockedCart.id,
@@ -304,10 +309,7 @@ export const verifyCoinRzpPaymentService = async (
     if (completedSession) {
         const transaction = await prisma.coinTransaction.findFirst({
             where: {
-                user_id: userId,
-                id: completedSession.id,
-                razorpay_order_id: orderId,
-                razorpay_payment_id: paymentId,
+                session_id: completedSession.id,
                 status: "COMPLETED"
             }
         });
@@ -358,7 +360,7 @@ export const verifyCoinRzpPaymentService = async (
             const transaction = await tx.coinTransaction.create({
                 data: {
                     user_id: userId,
-                    id: sessionId,
+                    session_id: sessionId,
                     metal: item.metal,
                     type: "BUY",
                     weight: item.weight,
@@ -383,6 +385,12 @@ export const verifyCoinRzpPaymentService = async (
                 create: { userId, coinGrams: item.weight, metal: item.metal, quantity: item.quantity },
                 update: { quantity: { increment: item.quantity } }
             });
+        }
+
+        // Clear the user's live cart after successful purchase
+        const userCart = await tx.cart.findUnique({ where: { user_id: userId } });
+        if (userCart) {
+            await tx.cartItem.deleteMany({ where: { cart_id: userCart.id } });
         }
 
         return { transactions };
@@ -427,7 +435,7 @@ export const failedCoinRzpPaymentService = async (
             const transaction = await tx.coinTransaction.create({
                 data: {
                     user_id: userId,
-                    id: sessionId,
+                    session_id: sessionId,
                     metal: item.metal,
                     type: "BUY",
                     weight: item.weight,
@@ -477,6 +485,15 @@ export const getActiveCoinSessionService = async (userId: string) => {
         lockedCartItems: session.lockedCart?.items ?? [],
         reason: "active" as const
     };
+};
+
+export const getCartService = async (userId: string) => {
+    const cart = await prisma.cart.findUnique({
+        where: { user_id: userId },
+        include: { items: true }
+    });
+
+    return cart?.items ?? [];
 };
 
 export const cancelCoinPurchaseSessionService = async (sessionId: string, userId: string) => {

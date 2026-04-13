@@ -7,6 +7,8 @@ import {
   approveAdminService,
   getMeService,
 } from "../services/auth.service.js";
+import { sendOTP } from "../services/email.service.js";
+import { generateOtp } from "../utils/otp.js";
 
 const handleError = (res: Response, error: any, fallback: string) => {
   const status = error?.status || 500;
@@ -39,6 +41,24 @@ export const signup = async (
     handleError(res, error, "Signup error:");
   }
 };
+
+export const resendOtp = async (req, res) => {
+  try {
+    const otp = generateOtp();
+    const result = await sendOTP(req.email, otp);
+    return res.status(200).json({
+      success: true,
+      message: "Otp sent successfully",
+      data: {}
+    });
+  }
+  catch(error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Server error"
+    });
+  }
+}
 
 export const login = async (
   req: AuthenticatedRequest,

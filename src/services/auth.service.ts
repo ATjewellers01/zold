@@ -6,6 +6,7 @@ import {
   sendOTP,
   sendApprovalNotificationToAdmin,
 } from "./email.service.js";
+import { generateOtp } from "../utils/otp.js";
 
 if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET environment variable is not set");
@@ -102,12 +103,12 @@ export const signupService = async (
     return { role: "ADMIN" };
   }
 
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otp = generateOtp();
   const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
   await prisma.user.update({
     where: { id: newUser.id },
-    data: { otp, otpExpiry },
+    data: {otp, otpExpiry },
   });
 
   await sendOTP(newUser.email, otp);

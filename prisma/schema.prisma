@@ -33,7 +33,7 @@ model User {
   coinInventory        CoinInventory[]
   coinPurchaseSessions CoinPurchaseSession[]
   coinTransactions     CoinTransaction[]
-  goldGoals            GoldGoal[]
+  metalGoals            MetalGoal[]
   gstConfigs           GstConfig[]            @relation("AdminGstConfigs")
   kyc                  Kyc?
   lockedCart           LockedCart[]
@@ -280,9 +280,10 @@ model Partner {
   @@index([userId])
 }
 
-model GoldGoal {
+model MetalGoal {
   id               String     @id @default(uuid())
   userId           String
+  metal            Metal
   targetAmount     Decimal    @db.Decimal(10, 2)
   currentAmount    Decimal    @default(0) @db.Decimal(10, 2)
   targetGrams      Decimal    @db.Decimal(10, 3)
@@ -295,6 +296,7 @@ model GoldGoal {
   goalCategory     String
   goalName         String
   targetDate       DateTime
+  completionDate DateTime?
   user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
