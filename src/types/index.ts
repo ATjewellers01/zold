@@ -2,8 +2,8 @@ import { Request, Response, NextFunction } from "express";
 
 export interface AuthenticatedRequest extends Request {
   user?: {
-    id?: string;
-    role?: string;
+    id: string;
+    role: string;
     adminRole?: string;
     username?: string;
     otp?: string;

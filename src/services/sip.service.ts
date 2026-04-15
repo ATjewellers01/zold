@@ -26,7 +26,9 @@ export const getSipService = async () => {
 export const createSipRzpOrder = async (
     userId: string,
     sipId: string,
-    invested_amount: Number,
+    name: string,
+    metal: "GOLD" | "SILVER",
+    amount: number,
     day_of_month: Number,
 ) => {
 
