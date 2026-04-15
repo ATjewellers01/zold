@@ -1,4 +1,5 @@
 import { Response } from "express";
+import jwt from "jsonwebtoken";
 import { AuthenticatedRequest } from "../types/index.js";
 import {
   signupService,
@@ -6,6 +7,8 @@ import {
   verifyOtpService,
   approveAdminService,
   getMeService,
+  verifyEmailAndSendOtpService,
+  verifyOtpAndResetPasswordService,
 } from "../services/auth.service.js";
 import { sendOTP } from "../services/email.service.js";
 import { generateOtp } from "../utils/otp.js";
@@ -67,7 +70,7 @@ export const resendOtp = async (req, res) => {
       data: {}
     });
   }
-  catch(error: any) {
+  catch (error: any) {
     return res.status(500).json({
       success: false,
       message: error.message || "Server error"
@@ -163,7 +166,6 @@ export const me = async (
     const user = await getMeService(userId);
     res.status(200).json({ success: true, user });
   } catch (error: any) {
-    // Clear stale cookie when user no longer exists
     if (error?.status === 401) {
       const isProd = process.env.NODE_ENV === "production";
       res.clearCookie("token", {
@@ -173,5 +175,69 @@ export const me = async (
       });
     }
     handleError(res, error, "Me error:");
+  }
+};
+
+export const verifyEmailAndSendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required"
+      });
+    }
+
+    const result = await verifyEmailAndSendOtpService(email);
+    if (result.token) {
+      const isProd = process.env.NODE_ENV === "production";
+      res.cookie("token", result.token, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: "lax",
+        maxAge: 5 * 60 * 1000,
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      message: "If this email is registered with us, we'll send you a verification code",
+      data: {}
+    });
+  }
+  catch(error) {
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+export const verifyOtpAndResetPassword = async (req, res) => {
+  try {
+    const { enteredOtp, newPassword } = req.body;
+    if (!enteredOtp || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Required fields empty"
+      });
+    }
+
+    await verifyOtpAndResetPasswordService(
+      enteredOtp,
+      req.user.otp,
+      req.user.email,
+      newPassword
+    );
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successfully",
+      data: {}
+    });
+  }
+  catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
   }
 };

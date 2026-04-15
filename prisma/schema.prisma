@@ -33,7 +33,7 @@ model User {
   coinInventory        CoinInventory[]
   coinPurchaseSessions CoinPurchaseSession[]
   coinTransactions     CoinTransaction[]
-  metalGoals            MetalGoal[]
+  metalGoals           MetalGoal[]
   gstConfigs           GstConfig[]            @relation("AdminGstConfigs")
   kyc                  Kyc?
   lockedCart           LockedCart[]
@@ -48,10 +48,10 @@ model User {
   referredBy           Referral?              @relation("ReferredUser")
   referrals            Referral[]             @relation("Referrer")
   savedAddresses       SavedAddress[]
-  Sip                  Sip[]
+  userSip              UserSip[]
   SipTransaction       SipTransaction[]
   sessions             UserSession[]
-  inventory               Inventory?
+  inventory            Inventory?
 }
 
 model Inventory {
@@ -101,7 +101,7 @@ model MetalTransaction {
   gstRate             Decimal               @default(3) @db.Decimal(5, 2)
   razorpay_order_id   String?
   razorpay_payment_id String?
-  razorpay_signature String?
+  razorpay_signature  String?
   remark              String?
   createdAt           DateTime              @default(now())
   metalGiftId         String?               @unique
@@ -116,24 +116,24 @@ model MetalTransaction {
 }
 
 model MetalPurchaseSession {
-  id              String                @id @default(uuid())
-  user_id         String
-  metalType       Metal
-  transactionType TransactionType
-  metalGrams      Decimal               @db.Decimal(10, 3)
-  locked_rate     Decimal               @db.Decimal(10, 2)
-  totalAmount     Decimal               @db.Decimal(10, 2)
-  gst             Decimal               @db.Decimal(10, 2)
-  gstRate         Decimal               @default(3) @db.Decimal(5, 2)
-  finalAmount     Decimal               @db.Decimal(10, 2)
-  razorpay_order_id String?
+  id                  String                @id @default(uuid())
+  user_id             String
+  metalType           Metal
+  transactionType     TransactionType
+  metalGrams          Decimal               @db.Decimal(10, 3)
+  locked_rate         Decimal               @db.Decimal(10, 2)
+  totalAmount         Decimal               @db.Decimal(10, 2)
+  gst                 Decimal               @db.Decimal(10, 2)
+  gstRate             Decimal               @default(3) @db.Decimal(5, 2)
+  finalAmount         Decimal               @db.Decimal(10, 2)
+  razorpay_order_id   String?
   razorpay_payment_id String?
-  status          PurchaseSessionStatus @default(ACTIVE)
-  started_at      DateTime              @default(now())
-  expires_at      DateTime
-  updated_at      DateTime              @updatedAt
-  user            User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  transaction     MetalTransaction?
+  status              PurchaseSessionStatus @default(ACTIVE)
+  started_at          DateTime              @default(now())
+  expires_at          DateTime
+  updated_at          DateTime              @updatedAt
+  user                User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  transaction         MetalTransaction?
 
   @@index([user_id])
   @@index([status])
@@ -296,7 +296,7 @@ model MetalGoal {
   goalCategory     String
   goalName         String
   targetDate       DateTime
-  completionDate DateTime?
+  completionDate   DateTime?
   user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -368,9 +368,9 @@ model CoinTransaction {
   payment_mode        PaymentMode
   razorpay_order_id   String?
   razorpay_payment_id String?
-  razorpay_signature String?
+  razorpay_signature  String?
   status              TransactionStatus    @default(PENDING)
-  remark String?
+  remark              String?
   created_at          DateTime             @default(now())
   session             CoinPurchaseSession? @relation(fields: [session_id], references: [id])
   user                User                 @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -383,18 +383,18 @@ model CoinTransaction {
 }
 
 model CoinPurchaseSession {
-  id   String                @id @default(uuid())
-  user_id      String
-  started_at   DateTime              @default(now())
-  expires_at   DateTime
-  status       PurchaseSessionStatus @default(ACTIVE)
-  razorpay_order_id String?
+  id                  String                @id @default(uuid())
+  user_id             String
+  started_at          DateTime              @default(now())
+  expires_at          DateTime
+  status              PurchaseSessionStatus @default(ACTIVE)
+  razorpay_order_id   String?
   razorpay_payment_id String?
-  gstRate      Decimal               @default(3) @db.Decimal(5, 2)
-  updated_at   DateTime              @updatedAt
-  user         User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  transactions CoinTransaction[]
-  lockedCart   LockedCart?
+  gstRate             Decimal               @default(3) @db.Decimal(5, 2)
+  updated_at          DateTime              @updatedAt
+  user                User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  transactions        CoinTransaction[]
+  lockedCart          LockedCart?
 
   @@index([user_id])
   @@index([status])
@@ -474,40 +474,52 @@ model Notification {
 }
 
 model Sip {
-  id                String           @id
-  user_id           String
-  name              String?
-  metal             Metal
-  amount            Decimal          @db.Decimal(10, 2)
-  frequency         SipFrequency
-  day_of_week       Int?
-  start_date        DateTime
-  end_date          DateTime?
-  status            SipStatus        @default(ACTIVE)
-  total_invested    Decimal          @db.Decimal(10, 2)
-  total_grams       Decimal          @db.Decimal(10, 3)
-  installments_paid Int
-  next_execution_at DateTime
-  created_at        DateTime         @default(now())
-  updated_at        DateTime
-  day_of_month      Int?
-  User              User             @relation(fields: [user_id], references: [id])
-  SipTransaction    SipTransaction[]
+  id             String           @id @default(uuid())
+  name           String
+  type           SipType
+  metal          Metal
+  min_investment Decimal          @default(100.00) @db.Decimal(10, 2)
+  created_at     DateTime         @default(now())
+
+  SipTransaction SipTransaction[]
+  userSips       UserSip[]
+}
+
+model UserSip {
+  id                    String   @id @default(uuid())
+  sip_id                String
+  user_id               String
+  metal                 Metal
+  investment_amount     Decimal  @db.Decimal(10, 2)
+  total_invested_amount Decimal  @db.Decimal(10, 3)
+  day_of_month          Int
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+  end_date              DateTime?
+
+  user User @relation(fields: [user_id], references: [id])
+  sip  Sip  @relation(fields: [sip_id], references: [id])
 }
 
 model SipTransaction {
-  id          String               @id
-  sip_id      String
-  user_id     String
-  amount      Decimal              @db.Decimal(10, 2)
-  metal_rate  Decimal              @db.Decimal(10, 2)
-  grams       Decimal              @db.Decimal(10, 3)
-  gst         Decimal              @db.Decimal(10, 2)
-  gst_rate    Int
-  status      SipTransactionStatus
-  executed_at DateTime             @default(now())
-  Sip         Sip                  @relation(fields: [sip_id], references: [id])
-  User        User                 @relation(fields: [user_id], references: [id])
+  id                String  @id @default(uuid())
+  sip_id            String
+  user_id           String
+  metal             Metal
+  investment_amount Decimal @db.Decimal(10, 2)
+  gst               Decimal @db.Decimal(5, 2)
+  total_amount      Decimal @db.Decimal(10, 2)
+
+  status              TransactionStatus
+  razorpay_order_id   String
+  razorpay_payment_id String
+  razorpay_signature  String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id])
+  sip  Sip  @relation(fields: [sip_id], references: [id])
 }
 
 enum Source {
@@ -606,4 +618,8 @@ enum SipTransactionStatus {
   SUCCESS
   FAILED
   SKIPPED
+}
+
+enum SipType {
+  REGULAR
 }

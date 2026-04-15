@@ -115,6 +115,47 @@ export const allocateToGoals = async (
     }
 };
 
+export const updateGoalService = async (userId: string, goalId: string, updates: {
+    goalName?: string;
+    goalCategory?: string;
+    targetAmount?: number;
+    targetGrams?: number;
+    paymentFrequency?: string;
+    targetDate?: string;
+}) => {
+    const goal = await prisma.metalGoal.findFirst({ where: { id: goalId, userId } });
+    if (!goal) throw new Error("Goal not found");
+
+    const data: any = {};
+    if (updates.goalName)        data.goalName        = updates.goalName;
+    if (updates.goalCategory)    data.goalCategory    = updates.goalCategory;
+    if (updates.paymentFrequency) data.paymentFrequency = updates.paymentFrequency;
+    if (updates.targetDate)      data.targetDate      = new Date(updates.targetDate);
+
+    // Only update targetAmount/targetGrams if goal type matches
+    if (Number(goal.targetAmount) > 0 && updates.targetAmount !== undefined) {
+        if (updates.targetAmount <= 0) throw new Error("Target amount must be positive");
+        if (updates.targetAmount < Number(goal.currentAmount)) throw new Error("Target amount cannot be less than current progress");
+        data.targetAmount = updates.targetAmount;
+        // If goal is completed and target increased, reactivate
+        if (goal.status === "COMPLETED" && updates.targetAmount > Number(goal.currentAmount)) {
+            data.status = "ACTIVE";
+            data.completionDate = null;
+        }
+    }
+    if (Number(goal.targetGrams) > 0 && updates.targetGrams !== undefined) {
+        if (updates.targetGrams <= 0) throw new Error("Target grams must be positive");
+        if (updates.targetGrams < Number(goal.currentGrams)) throw new Error("Target grams cannot be less than current progress");
+        data.targetGrams = updates.targetGrams;
+        if (goal.status === "COMPLETED" && updates.targetGrams > Number(goal.currentGrams)) {
+            data.status = "ACTIVE";
+            data.completionDate = null;
+        }
+    }
+
+    return prisma.metalGoal.update({ where: { id: goalId }, data });
+};
+
 export const deleteGoalService = async (userId, goalId) => {
     await prisma.metalGoal.delete({
         where: { id: goalId, userId }

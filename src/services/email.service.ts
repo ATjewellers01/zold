@@ -12,7 +12,7 @@ interface AdminDetails {
   username: string;
 }
 
-const sendEmail = async (
+export const sendEmail = async (
   to: string,
   subject: string,
   html: string,

@@ -1,6 +1,6 @@
 import { Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { AuthenticatedRequest, JwtPayload } from "../types/index.js";
+import { AuthenticatedRequest, JwtPayload, ResetPasswordJwtPayload } from "../types/index.js";
 
 if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET environment variable is not set");
@@ -74,6 +74,30 @@ export const authMiddleware = (
     return;
   }
 };
+
+export const resetPasswordMiddleware = async (req, res, next) => {
+  const token = req.cookies.token;
+  if(!token) {
+    res.status(401).json({ success: false, message: "No token provided" });
+    return;
+  }
+
+  try {
+    const decipher = jwt.verify(token, JWT_SECRET) as ResetPasswordJwtPayload;
+    req.user = {
+      otp: decipher.otp,
+      email: decipher.email
+    };
+    next();
+  }
+  catch(error) {
+    res.status(401).json({
+      success: false,
+      message: "Invalid or expired token" 
+    });
+    return;
+  }
+}
 
 export const roleMiddleware = (...allowedRoles: string[]) => {
   return (

@@ -2,10 +2,12 @@ import { Request, Response, NextFunction } from "express";
 
 export interface AuthenticatedRequest extends Request {
   user?: {
-    id: string;
-    role: string;
+    id?: string;
+    role?: string;
     adminRole?: string;
     username?: string;
+    otp?: string;
+    email?: string;
   };
   metalPurchaseSession?: any;
   coinPurchaseSession?: any;
@@ -18,6 +20,11 @@ export interface JwtPayload {
   username?: string;
   iat?: number;
   exp?: number;
+}
+
+export interface ResetPasswordJwtPayload {
+  otp: string;
+  email: string;
 }
 
 export interface ApiResponse<T = any> {

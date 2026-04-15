@@ -1,4 +1,4 @@
-import { createGoalService, getGoalsService, getGoalHistoryService, deleteGoalService } from "../services/metal_goal.service.js"
+import { createGoalService, getGoalsService, getGoalHistoryService, deleteGoalService, updateGoalService } from "../services/metal_goal.service.js"
 
 export const createGoal = async (req, res) => {
   try {
@@ -47,6 +47,15 @@ export const getGoalHistory = async (req, res) => {
       success: false, 
       message: (error as any).message || "Server error" 
     });
+  }
+};
+
+export const updateGoal = async (req, res) => {
+  try {
+    const updated = await updateGoalService(req.user.id, req.params.id, req.body);
+    return res.status(200).json({ success: true, message: "Goal updated successfully", data: updated });
+  } catch (error: any) {
+    return res.status(400).json({ success: false, message: error.message || "Server error" });
   }
 };
 

@@ -1,37 +1,64 @@
-// import prisma from "../config/db.js"
-// import { getCurrentGoldRate, getCurrentSilverRate } from "./metalRateService.js"
+import prisma from "../config/db.js"
+import { razorpay } from "../config/razorpay.js";
 
-// const createSip = async (
-//     user_id: string,
-//     name: string,
-//     metal: "GOLD" | "SILVER",
-//     amount: number,
-//     frequency: "DAILY" | "WEEKLY" | "MONTHLY",
-//     day_of_week: number,
-//     day_of_month: number,
-//     start_date,
-//     status: "ACTIVE" | "PAUSED" | "CANCELLED" | "COMPLETED",
-// ) => {
-//     const sip = await prisma.$transaction(async (tx) => {
-//         const goldPrice = await getCurrentGoldRate();
-//         const silverPrice = await getCurrentSilverRate();
+import { getCurrentGoldRate, getCurrentSilverRate } from "./metal_rate.service.js";
 
-//         if(metal === "GOLD" && goldPrice.buyRate <= 0) {
-//             throw new Error("Gold rate unavailable");
-//         }
-//         if(metal === "SILVER" && silverPrice.buyRate <= 0) {
-//             throw new Error("Silver rate unavailable");
-//         }
+export const createSipService = async (
+    name: string,
+    type: "REGULAR",
+    metal: "GOLD" | "SILVER",
+) => {
+    const sip = await prisma.sip.create({
+        data: {
+            name,
+            type: type,
+            metal,
+        }
+    });
 
-//         const totalGramsPurchased = metal === "GOLD" ? amount/goldPrice.buyRate : amount/silverPrice.buyRate;
+    return sip;
+};
 
-//         tx.sip.create({
-//             data: {
-//                 user_id,
-//                 name,
-//                 metal,
+export const getSipService = async () => {
+    return await prisma.sip.findMany({});
+};
 
-//             }
-//         })
-//     })
-// }
+export const createSipRzpOrder = async (
+    userId: string,
+    sipId: string,
+    invested_amount: Number,
+    day_of_month: Number,
+) => {
+
+    const goldPrice = await getCurrentGoldRate();
+    const silverPrice = await getCurrentSilverRate();
+
+    if (metal === "GOLD" && goldPrice.buyRate <= 0) {
+        throw new Error("Gold rate unavailable");
+    }
+    if (metal === "SILVER" && silverPrice.buyRate <= 0) {
+        throw new Error("Silver rate unavailable");
+    }
+
+    const totalGramsPurchased = metal === "GOLD" ?
+        amount / goldPrice.buyRate : amount / silverPrice.buyRate;
+
+    const order = await razorpay.orders.create({
+        amount: Math.round(Number(amount) * 100),
+        currency: "INR",
+        receipt: `reciept_sip${Date.now()}`
+    });
+
+    return {
+        amount: order.amount,
+        currency: order.currency,
+        receipt: order.receipt,
+        keId: process.env.RAZORPAY_KEY_ID,
+        sipDetails: {
+            name,
+            metal,
+            amount,
+            day_of_month
+        }
+    };
+}

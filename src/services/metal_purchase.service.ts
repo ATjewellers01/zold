@@ -193,7 +193,7 @@ export const verifyMetalRzpPaymentService = async (
     }
 
     const verifiedPayment = await prisma.$transaction(async (tx) => {
-        // Atomic guard: ensures this payment is only processed once even under concurrent requests
+        
         const updateResult = await tx.metalPurchaseSession.updateMany({
             where: {
                 id: paymentSession.id,
@@ -211,7 +211,6 @@ export const verifyMetalRzpPaymentService = async (
             throw new Error("Already processed");
         }
 
-        // Use paymentSession for all data — never use the updateMany result (it's only { count: N })
         const transaction = await tx.metalTransaction.create({
             data: {
                 user_id: userId,
@@ -254,7 +253,6 @@ export const verifyMetalRzpPaymentService = async (
         };
     });
 
-    // Allocate toward active goals — only for BUY, never SELL
     if (paymentSession.transactionType === "BUY") {
         await allocateToGoals(
             userId,

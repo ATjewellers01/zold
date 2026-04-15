@@ -96,7 +96,7 @@ server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`WebSocket server ready for connections`);
 
-  startScheduler();
+  startScheduler().catch((e) => console.error("[Scheduler] Failed to start:", e));
 
   import("./services/metal_price_update.service.js").then(
     ({ startMetalPriceUpdates }) => {
