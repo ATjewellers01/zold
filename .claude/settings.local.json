@@ -7,7 +7,8 @@
       "Bash(sed -n '3,12p' /c/Users/pryoucan/Documents/Org-Pr/zold-final-application/backend/zold/src/routes/metalPurchaseRoutes.ts)",
       "Bash(git:*)",
       "Bash(mv:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(xargs grep:*)"
     ]
   }
 }

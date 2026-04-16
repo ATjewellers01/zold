@@ -490,13 +490,14 @@ model UserSip {
   sip_id                String
   user_id               String
   metal                 Metal
-  investment_amount     Decimal  @db.Decimal(10, 2)
-  total_invested_amount Decimal  @db.Decimal(10, 3)
+  investment_amount     Decimal @db.Decimal(10, 2)
+  total_invested_amount     Decimal  @db.Decimal(10, 2)
   day_of_month          Int
   created_at            DateTime @default(now())
   updated_at            DateTime @updatedAt
   end_date              DateTime?
 
+  @@unique([sip_id, user_id])
   user User @relation(fields: [user_id], references: [id])
   sip  Sip  @relation(fields: [sip_id], references: [id])
 }

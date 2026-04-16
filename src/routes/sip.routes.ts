@@ -7,7 +7,10 @@ export const router = Router();
 
 router.get("/all", authMiddleware, sipController.getSip);
 router.post("/create",
-    authMiddleware, 
-    roleMiddleware("ADMIN"), 
+    authMiddleware,
+    roleMiddleware("ADMIN"),
     sipController.createSip
 );
+router.get("/my-sips", authMiddleware, sipController.activeSip);
+router.post("/order", authMiddleware, sipController.createSipOrder);
+router.post("/verify", authMiddleware, sipController.verifySip);

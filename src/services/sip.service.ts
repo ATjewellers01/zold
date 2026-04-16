@@ -1,7 +1,9 @@
 import prisma from "../config/db.js"
 import { razorpay } from "../config/razorpay.js";
+import { createHmac } from "crypto";
 
 import { getCurrentGoldRate, getCurrentSilverRate } from "./metal_rate.service.js";
+import { getCurrentGstRateWhole } from "./gst.service.js";
 
 export const createSipService = async (
     name: string,
@@ -29,7 +31,7 @@ export const createSipRzpOrder = async (
     name: string,
     metal: "GOLD" | "SILVER",
     amount: number,
-    day_of_month: Number,
+    day_of_month: number,
 ) => {
 
     const goldPrice = await getCurrentGoldRate();
@@ -42,25 +44,111 @@ export const createSipRzpOrder = async (
         throw new Error("Silver rate unavailable");
     }
 
-    const totalGramsPurchased = metal === "GOLD" ?
-        amount / goldPrice.buyRate : amount / silverPrice.buyRate;
+    const gstRate = await getCurrentGstRateWhole();
+    const gstAmount = (gstRate / 100) * amount;
+    const totalAmount = amount + gstAmount;
 
     const order = await razorpay.orders.create({
-        amount: Math.round(Number(amount) * 100),
+        amount: Math.round(Number(totalAmount) * 100),
         currency: "INR",
         receipt: `reciept_sip${Date.now()}`
     });
 
     return {
+        orderId: order.id,
         amount: order.amount,
         currency: order.currency,
         receipt: order.receipt,
-        keId: process.env.RAZORPAY_KEY_ID,
+        keyId: process.env.RAZORPAY_KEY_ID,
         sipDetails: {
             name,
             metal,
             amount,
-            day_of_month
+            day_of_month,
+        },
+        orderDetails: {
+            gstRate,
+            gstAmount,
+            totalAmount
         }
     };
-}
+};
+
+export const verifySipTransaction = async (
+    userId: string,
+    sipId: string,
+    orderId: string,
+    paymentId: string,
+    signature: string,
+    sipDetails,
+    orderDetails
+) => {
+    // Verify HMAC signature first, if does not match, reject it
+    const expected = createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
+        .update(`${orderId}|${paymentId}`)
+        .digest("hex");
+
+    if (expected != signature) {
+        throw new Error("Invalid transaction");
+    }
+
+    const existOrder = await prisma.sipTransaction.findMany({
+        where: { user_id: userId, razorpay_order_id: orderId, razorpay_payment_id: paymentId }
+    });
+
+    // If there is already an order created with same orderId and paymentId,
+    // payment already completed, return that order
+    if (existOrder.length > 0) {
+        return { order: existOrder, message: "Your transaction is already completed" };
+    }
+
+    // Update both, user's sip record and transaction record atomically
+    const result = await prisma.$transaction(async (tx) => {
+        const userSipRecord = await tx.userSip.upsert({
+            where: {
+                sip_id_user_id: {
+                    sip_id: sipId, user_id: userId
+                }
+            },
+            create: {
+                sip_id: sipId,
+                user_id: userId,
+                metal: sipDetails.metal,
+                investment_amount: sipDetails.amount,
+                total_invested_amount: sipDetails.amount,
+                day_of_month: sipDetails.day_of_month,
+            },
+            update: {
+                investment_amount: sipDetails.amount,
+                total_invested_amount: { increment: sipDetails.amount },
+                day_of_month: sipDetails.day_of_month
+            }
+        });
+
+        const sipTransactionRecord = await tx.sipTransaction.create({
+            data: {
+                sip_id: sipId,
+                user_id: userId,
+                gst: orderDetails.gstAmount,
+                investment_amount: sipDetails.amount,
+                metal: sipDetails.metal,
+                razorpay_order_id: orderId,
+                razorpay_payment_id: paymentId,
+                razorpay_signature: signature,
+                total_amount: orderDetails.totalAmount,
+                status: "COMPLETED"
+            }
+        });
+
+        return { userSipRecord, sipTransactionRecord };
+    });
+
+    return result;
+};
+
+export const activeSipService = async (userId) => {
+    return await prisma.userSip.findMany({
+        where: { user_id: userId },
+        include: { sip: { select: { name: true, type: true } } }
+    });
+};

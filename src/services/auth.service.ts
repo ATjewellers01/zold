@@ -282,5 +282,6 @@ export const verifyOtpAndResetPasswordService = async (enteredOtp, otp, email, n
     where: { email },
     data: { password:  hashPassword }
   });
+  
   return updatePassword;
 };
