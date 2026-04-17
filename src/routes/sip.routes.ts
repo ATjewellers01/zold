@@ -14,3 +14,6 @@ router.post("/create",
 router.get("/my-sips", authMiddleware, sipController.activeSip);
 router.post("/order", authMiddleware, sipController.createSipOrder);
 router.post("/verify", authMiddleware, sipController.verifySip);
+router.post("/topup/order", authMiddleware, sipController.createTopupOrder);
+router.post("/topup/verify", authMiddleware, sipController.verifyTopup);
+router.patch("/modify", authMiddleware, sipController.modifySip);

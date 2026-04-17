@@ -1,4 +1,4 @@
-import { createSipService, createSipRzpOrder, getSipService, verifySipTransaction, activeSipService } from "../services/sip.service.js"
+import { createSipService, createSipRzpOrder, getSipService, verifySipTransaction, activeSipService, createTopupOrderService, verifyTopupService, modifySipService } from "../services/sip.service.js"
 
 export const createSip = async (req, res) => {
     try {
@@ -87,5 +87,38 @@ export const activeSip = async (req, res) => {
             success: false,
             message: "Server error"
         });
+    }
+};
+
+export const createTopupOrder = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { sipId, metal, amount } = req.body;
+        const order = await createTopupOrderService(userId, sipId, metal, amount);
+        return res.status(200).json({ success: true, message: "Top-up order created", data: order });
+    } catch (error: any) {
+        return res.status(500).json({ success: false, message: error.message || "Server error" });
+    }
+};
+
+export const verifyTopup = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { sipId, orderId, paymentId, signature, topupDetails, orderDetails } = req.body;
+        const result = await verifyTopupService(userId, sipId, orderId, paymentId, signature, topupDetails, orderDetails);
+        return res.status(200).json({ success: true, message: "Top-up successful", data: result });
+    } catch (error: any) {
+        return res.status(500).json({ success: false, message: error.message || "Server error" });
+    }
+};
+
+export const modifySip = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { sipId, investment_amount, day_of_month } = req.body;
+        const result = await modifySipService(userId, sipId, investment_amount, day_of_month);
+        return res.status(200).json({ success: true, message: "SIP updated successfully", data: result });
+    } catch (error: any) {
+        return res.status(500).json({ success: false, message: error.message || "Server error" });
     }
 };

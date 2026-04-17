@@ -152,3 +152,118 @@ export const activeSipService = async (userId) => {
         include: { sip: { select: { name: true, type: true } } }
     });
 };
+
+// ── Top-up: one-time immediate purchase, adds metal to wallet
+
+export const createTopupOrderService = async (
+    userId: string,
+    sipId: string,
+    metal: "GOLD" | "SILVER",
+    amount: number,
+) => {
+    const rate = metal === "GOLD" ? await getCurrentGoldRate() : await getCurrentSilverRate();
+    if (rate.buyRate <= 0) throw new Error(`${metal} rate unavailable`);
+
+    const gstRate = await getCurrentGstRateWhole();
+    const gstAmount = (gstRate / 100) * amount;
+    const totalAmount = amount + gstAmount;
+
+    const order = await razorpay.orders.create({
+        amount: Math.round(totalAmount * 100),
+        currency: "INR",
+        receipt: `receipt_topup_${Date.now()}`,
+    });
+
+    return {
+        orderId: order.id,
+        amount: order.amount,
+        currency: order.currency,
+        keyId: process.env.RAZORPAY_KEY_ID,
+        topupDetails: { metal, amount, buyRate: rate.buyRate },
+        orderDetails: { gstRate, gstAmount, totalAmount },
+    };
+};
+
+export const verifyTopupService = async (
+    userId: string,
+    sipId: string,
+    orderId: string,
+    paymentId: string,
+    signature: string,
+    topupDetails: { metal: "GOLD" | "SILVER"; amount: number; buyRate: number },
+    orderDetails: { gstRate: number; gstAmount: number; totalAmount: number },
+) => {
+    const expected = createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
+        .update(`${orderId}|${paymentId}`)
+        .digest("hex");
+
+    if (expected !== signature) throw new Error("Invalid transaction");
+
+    // Idempotency: don't double-credit if webhook fires twice
+    const existing = await prisma.sipTransaction.findFirst({
+        where: { razorpay_order_id: orderId, razorpay_payment_id: paymentId },
+    });
+    if (existing) return { transaction: existing, message: "Already completed" };
+
+    const grams = topupDetails.amount / topupDetails.buyRate;
+    const walletField = topupDetails.metal === "GOLD" ? "goldBalance" : "silverBalance";
+
+    const result = await prisma.$transaction(async (tx) => {
+        // Add grams to wallet
+        await tx.inventory.update({
+            where: { userId },
+            data: { [walletField]: { increment: grams } },
+        });
+
+        // Increment total_invested on the UserSip (does NOT change recurring amount or day)
+        await tx.userSip.update({
+            where: { sip_id_user_id: { sip_id: sipId, user_id: userId } },
+            data: { total_invested_amount: { increment: topupDetails.amount } },
+        });
+
+        // Record transaction
+        return tx.sipTransaction.create({
+            data: {
+                sip_id: sipId,
+                user_id: userId,
+                metal: topupDetails.metal,
+                investment_amount: topupDetails.amount,
+                gst: orderDetails.gstAmount,
+                total_amount: orderDetails.totalAmount,
+                razorpay_order_id: orderId,
+                razorpay_payment_id: paymentId,
+                razorpay_signature: signature,
+                status: "COMPLETED",
+            },
+        });
+    });
+
+    return result;
+};
+
+// ── Modify SIP: update recurring amount and/or day, no payment ───────────────
+
+export const modifySipService = async (
+    userId: string,
+    sipId: string,
+    investment_amount?: number,
+    day_of_month?: number,
+) => {
+    const userSip = await prisma.userSip.findUnique({
+        where: { sip_id_user_id: { sip_id: sipId, user_id: userId } },
+    });
+    if (!userSip) throw new Error("SIP not found");
+
+    if (day_of_month !== undefined && (day_of_month < 1 || day_of_month > 28)) {
+        throw new Error("Day of month must be between 1 and 28");
+    }
+
+    const data: { investment_amount?: number; day_of_month?: number } = {};
+    if (investment_amount !== undefined) data.investment_amount = investment_amount;
+    if (day_of_month !== undefined) data.day_of_month = day_of_month;
+
+    return await prisma.userSip.update({
+        where: { sip_id_user_id: { sip_id: sipId, user_id: userId } },
+        data,
+    });
+};
