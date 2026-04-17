@@ -248,36 +248,25 @@ model KycDocument {
 
 model Partner {
   id          String    @id @default(uuid())
-  name        String
-  area        String
-  city        String
-  state       String    @default("Chhattisgarh")
-  country     String    @default("India")
-  latitude    Float
-  longitude   Float
-  distance    Float     @default(0)
-  phone       String
-  email       String?
-  website     String?
-  rating      Float     @default(0)
-  reviews     Int       @default(0)
-  timings     String
-  services    String
-  offers      String    @default("[]")
-  description String?
-  isActive    Boolean   @default(true)
-  isVerified  Boolean   @default(false)
-  verifiedAt  DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  bankAccount String?
-  commission  Decimal   @default(0) @db.Decimal(5, 2)
-  userId      String?   @unique
-  user        User?     @relation(fields: [userId], references: [id])
+  business_name String
+  owner_name String
+  services_offers Services
+  area String
+  city  String
+  full_address String
+  pincode String
+  timings String
+  latitude String
+  longitude String
+  
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  @@index([city])
-  @@index([isActive])
-  @@index([userId])
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([id, area, pincode])
+
 }
 
 model MetalGoal {
@@ -623,4 +612,10 @@ enum SipTransactionStatus {
 
 enum SipType {
   REGULAR
+}
+
+enum Services {
+  JEWELLERY
+  PICKUP
+  LOAN
 }

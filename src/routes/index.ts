@@ -14,6 +14,7 @@ import metaRoutes from "./gst.routes.js";
 import metalGiftRoutes from "./metal_gift.routes.js";
 import notificationRoutes from "./notification.routes.js";
 import { router as sipRoutes } from "./sip.routes.js";
+import { router as partnerRoutes } from "./partner.routes.js";
 
 const router = Router();
 
@@ -31,6 +32,7 @@ router.use("/meta", metaRoutes);
 router.use("/metal-gifts", metalGiftRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/sip", sipRoutes);
+router.use("/partner", partnerRoutes);
 
 router.get("/", (req: Request, res: Response) => {
   res.json({ message: "Welcome to Zold API" });
