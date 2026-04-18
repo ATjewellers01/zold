@@ -5,9 +5,12 @@ import { authMiddleware, roleMiddleware } from "../middlewares/auth.middleware.j
 
 export const router = Router();
 
+router.get("/", partnerController.getPartnersByLocation);
+
 router.post("/register",
     authMiddleware,
     roleMiddleware("ADMIN"),
     partnerController.registerPartner
 );
+
 router.post("/details", authMiddleware, partnerController.addParterDetails);
