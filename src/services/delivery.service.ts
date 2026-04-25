@@ -9,7 +9,6 @@ export const initiateDeliveryService = async (userId: string, deliveryDetails) =
             user_id: userId,
             metal,
             weight: coinGrams,
-            quantity,
             status: "COMPLETED",
             OR: [
                 { delivery: null },
@@ -17,6 +16,10 @@ export const initiateDeliveryService = async (userId: string, deliveryDetails) =
             ]
         }
     });
+
+    if(coinTransaction && coinTransaction.quantity < quantity) {
+        throw new ApiError(400, `You do not have sufficient ${metal} Coin Balance, please purchase and try again`);
+    }
 
     if (!coinTransaction) {
         throw new ApiError(400, `You already have an ongoing delivery for this ${metal} coin`);
