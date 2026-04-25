@@ -2,8 +2,8 @@ import { createSipService, createSipRzpOrder, getSipService, verifySipTransactio
 
 export const createSip = async (req, res) => {
     try {
-        const { name, type, metal } = req.body;
-        const sip = await createSipService(name, type, metal);
+        const { name, type, metal, minInvestment } = req.body;
+        const sip = await createSipService(name, type, metal, minInvestment);
         return res.status(201).json({
             success: true,
             message: "SIP created successfully",

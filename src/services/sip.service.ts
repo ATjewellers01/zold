@@ -9,12 +9,14 @@ export const createSipService = async (
     name: string,
     type: "REGULAR",
     metal: "GOLD" | "SILVER",
+    minInvestment: number
 ) => {
     const sip = await prisma.sip.create({
         data: {
             name,
             type: type,
             metal,
+            min_investment: minInvestment
         }
     });
 
