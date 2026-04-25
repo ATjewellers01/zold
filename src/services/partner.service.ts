@@ -72,13 +72,9 @@ export const addParterDetailsService = async (
     return result;
 };
 
-export const getPartnersByLocationService = async (city) => {
+export const getPartnersByLocationService = async (city?: string) => {
     const result = await prisma.partner.findMany({
-        where: {
-            city: {
-                equals: city
-            }
-        }
+        where: city ? { city: { equals: city } } : undefined
     });
 
     return result;

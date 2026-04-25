@@ -33,25 +33,26 @@ model User {
   coinInventory        CoinInventory[]
   coinPurchaseSessions CoinPurchaseSession[]
   coinTransactions     CoinTransaction[]
-  metalGoals           MetalGoal[]
   gstConfigs           GstConfig[]            @relation("AdminGstConfigs")
+  inventory            Inventory?
   kyc                  Kyc?
   lockedCart           LockedCart[]
   receivedGifts        MetalGift[]            @relation("ReceivedGifts")
   sentGifts            MetalGift[]            @relation("SentGifts")
+  metalGoals           MetalGoal[]
   metalPurchaseSession MetalPurchaseSession[]
   metalRate            MetalRate[]
   metalTransactions    MetalTransaction[]
   notifications        Notification[]
+  deliveries           Delivery[]
   partner              Partner?
   paymentMethods       PaymentMethod[]
   referredBy           Referral?              @relation("ReferredUser")
   referrals            Referral[]             @relation("Referrer")
   savedAddresses       SavedAddress[]
-  userSip              UserSip[]
   SipTransaction       SipTransaction[]
   sessions             UserSession[]
-  inventory            Inventory?
+  userSip              UserSip[]
 }
 
 model Inventory {
@@ -101,10 +102,10 @@ model MetalTransaction {
   gstRate             Decimal               @default(3) @db.Decimal(5, 2)
   razorpay_order_id   String?
   razorpay_payment_id String?
-  razorpay_signature  String?
   remark              String?
   createdAt           DateTime              @default(now())
   metalGiftId         String?               @unique
+  razorpay_signature  String?
   metalGift           MetalGift?            @relation(fields: [metalGiftId], references: [id])
   session             MetalPurchaseSession? @relation(fields: [session_id], references: [id])
   user                User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -126,12 +127,12 @@ model MetalPurchaseSession {
   gst                 Decimal               @db.Decimal(10, 2)
   gstRate             Decimal               @default(3) @db.Decimal(5, 2)
   finalAmount         Decimal               @db.Decimal(10, 2)
-  razorpay_order_id   String?
-  razorpay_payment_id String?
   status              PurchaseSessionStatus @default(ACTIVE)
   started_at          DateTime              @default(now())
   expires_at          DateTime
   updated_at          DateTime              @updatedAt
+  razorpay_order_id   String?
+  razorpay_payment_id String?
   user                User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
   transaction         MetalTransaction?
 
@@ -247,26 +248,24 @@ model KycDocument {
 }
 
 model Partner {
-  id          String    @id @default(uuid())
-  business_name String
-  owner_name String
+  id              String   @id @default(uuid())
+  area            String
+  city            String
+  longitude       String
+  timings         String
+  userId          String   @unique
+  business_name   String
+  created_at      DateTime @default(now())
+  full_address    String
+  owner_name      String
+  pincode         String
   services_offers Services
-  area String
-  city  String
-  full_address String
-  pincode String
-  timings String
-  latitude String
-  longitude String
-  
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  updated_at      DateTime @updatedAt
+  latitude        String
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries      Delivery[]
 
-  userId String @unique
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
   @@index([id, area, pincode])
-
 }
 
 model MetalGoal {
@@ -357,10 +356,11 @@ model CoinTransaction {
   payment_mode        PaymentMode
   razorpay_order_id   String?
   razorpay_payment_id String?
-  razorpay_signature  String?
   status              TransactionStatus    @default(PENDING)
-  remark              String?
   created_at          DateTime             @default(now())
+  razorpay_signature  String?
+  remark              String?
+  delivery Delivery?
   session             CoinPurchaseSession? @relation(fields: [session_id], references: [id])
   user                User                 @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
@@ -372,15 +372,15 @@ model CoinTransaction {
 }
 
 model CoinPurchaseSession {
-  id                  String                @id @default(uuid())
   user_id             String
   started_at          DateTime              @default(now())
   expires_at          DateTime
   status              PurchaseSessionStatus @default(ACTIVE)
-  razorpay_order_id   String?
-  razorpay_payment_id String?
   gstRate             Decimal               @default(3) @db.Decimal(5, 2)
   updated_at          DateTime              @updatedAt
+  razorpay_order_id   String?
+  razorpay_payment_id String?
+  id                  String                @id @default(uuid())
   user                User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
   transactions        CoinTransaction[]
   lockedCart          LockedCart?
@@ -465,51 +465,47 @@ model Notification {
 model Sip {
   id             String           @id @default(uuid())
   name           String
-  type           SipType
   metal          Metal
-  min_investment Decimal          @default(100.00) @db.Decimal(10, 2)
   created_at     DateTime         @default(now())
-
+  min_investment Decimal          @default(100.00) @db.Decimal(10, 2)
+  type           SipType
   SipTransaction SipTransaction[]
   userSips       UserSip[]
 }
 
 model UserSip {
-  id                    String   @id @default(uuid())
+  id                    String    @id @default(uuid())
   sip_id                String
   user_id               String
   metal                 Metal
-  investment_amount     Decimal @db.Decimal(10, 2)
-  total_invested_amount     Decimal  @db.Decimal(10, 2)
   day_of_month          Int
-  created_at            DateTime @default(now())
-  updated_at            DateTime @updatedAt
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
   end_date              DateTime?
+  investment_amount     Decimal   @db.Decimal(10, 2)
+  total_invested_amount Decimal   @db.Decimal(10, 2)
+  sip                   Sip       @relation(fields: [sip_id], references: [id])
+  user                  User      @relation(fields: [user_id], references: [id])
 
   @@unique([sip_id, user_id])
-  user User @relation(fields: [user_id], references: [id])
-  sip  Sip  @relation(fields: [sip_id], references: [id])
 }
 
 model SipTransaction {
-  id                String  @id @default(uuid())
-  sip_id            String
-  user_id           String
-  metal             Metal
-  investment_amount Decimal @db.Decimal(10, 2)
-  gst               Decimal @db.Decimal(5, 2)
-  total_amount      Decimal @db.Decimal(10, 2)
-
-  status              TransactionStatus
+  id                  String            @id @default(uuid())
+  sip_id              String
+  user_id             String
+  gst                 Decimal           @db.Decimal(5, 2)
+  created_at          DateTime          @default(now())
+  investment_amount   Decimal           @db.Decimal(10, 2)
+  metal               Metal
   razorpay_order_id   String
   razorpay_payment_id String
   razorpay_signature  String
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  user User @relation(fields: [user_id], references: [id])
-  sip  Sip  @relation(fields: [sip_id], references: [id])
+  total_amount        Decimal           @db.Decimal(10, 2)
+  updated_at          DateTime          @updatedAt
+  status              TransactionStatus
+  sip                 Sip               @relation(fields: [sip_id], references: [id])
+  user                User              @relation(fields: [user_id], references: [id])
 }
 
 enum Source {
@@ -612,6 +608,36 @@ enum SipTransactionStatus {
 
 enum SipType {
   REGULAR
+}
+
+model Delivery {
+  id                String         @id @default(uuid())
+  userId            String
+  partnerId         String
+  coin_transaction_id String @unique
+  metal             Metal
+  coin_grams        Int
+  quantity          Int
+  tentativeDate     DateTime?
+  completionDate    DateTime?
+  addressOfDelivery String
+  status            DeliveryStatus @default(PENDING)
+
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  partner           Partner        @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  coinTransaction   CoinTransaction @relation(fields: [coin_transaction_id], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([partnerId])
+  @@index([status])
+}
+
+enum DeliveryStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
 }
 
 enum Services {
