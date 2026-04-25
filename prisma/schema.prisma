@@ -360,7 +360,6 @@ model CoinTransaction {
   created_at          DateTime             @default(now())
   razorpay_signature  String?
   remark              String?
-  delivery Delivery?
   session             CoinPurchaseSession? @relation(fields: [session_id], references: [id])
   user                User                 @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
@@ -614,7 +613,6 @@ model Delivery {
   id                String         @id @default(uuid())
   userId            String
   partnerId         String
-  coin_transaction_id String @unique
   metal             Metal
   coin_grams        Int
   quantity          Int
@@ -622,10 +620,10 @@ model Delivery {
   completionDate    DateTime?
   addressOfDelivery String
   status            DeliveryStatus @default(PENDING)
+  createdAt         DateTime       @default(now())
 
   user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   partner           Partner        @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-  coinTransaction   CoinTransaction @relation(fields: [coin_transaction_id], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([partnerId])
