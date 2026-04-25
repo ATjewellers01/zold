@@ -3,7 +3,8 @@ import { ApiError } from "../utils/error_class.js";
 
 export const initiateDeliveryService = async (userId: string, deliveryDetails) => {
     const { metal, coinGrams, quantity, partnerId, deliveryAddress } = deliveryDetails;
-    const deliverablesExists = await prisma.coinTransaction.findFirst({
+
+    const coinTransaction = await prisma.coinTransaction.findFirst({
         where: {
             user_id: userId,
             metal,
@@ -17,21 +18,51 @@ export const initiateDeliveryService = async (userId: string, deliveryDetails) =
         }
     });
 
-    if(!deliverablesExists) {
-        throw new ApiError(400, `You have already an ongoing delivery for this ${metal} coin`);
+    if (!coinTransaction) {
+        throw new ApiError(400, `You already have an ongoing delivery for this ${metal} coin`);
     }
 
-    const result = await prisma.delivery.create({
-        data: {
+    const result = await prisma.delivery.upsert({
+        where: { coin_transaction_id: coinTransaction.id },
+        create: {
             userId,
             partnerId,
-            coin_transaction_id: deliverablesExists.id,
-            metal: metal,
+            coin_transaction_id: coinTransaction.id,
+            metal,
             coin_grams: coinGrams,
             quantity,
             addressOfDelivery: deliveryAddress
+        },
+        update: {
+            partnerId,
+            addressOfDelivery: deliveryAddress,
+            status: "PENDING",
+            tentativeDate: null,
+            completionDate: null,
         }
     });
+
+    return result;
+};
+
+export const cancelDeliveryService = async (
+    userId: string,
+    deliveryId: string,
+) => {
+    const result = await prisma.delivery.update({
+        where: 
+        { 
+            id: deliveryId, 
+            userId, 
+            completionDate: null, 
+            status: { not: "CANCELLED" } 
+        },
+        data: { status: "CANCELLED" }
+    });
+
+    if(!result) {
+        throw new ApiError(400, "Invalid or Completed delivery");
+    }
 
     return result;
 };
@@ -93,10 +124,21 @@ export const updatePartnerDeliveryInformationService = async (
 
     const partnerId = validPartner.id;
 
+    const delivery = await prisma.delivery.findUnique({
+        where: { id: deliveryId },
+        select: { id: true, partnerId: true, status: true }
+    });
+
+    if (!delivery || delivery.partnerId !== partnerId) {
+        throw new ApiError(404, "Delivery not found");
+    }
+
+    if (delivery.status === "CANCELLED" || delivery.status === "DELIVERED") {
+        throw new ApiError(400, "Cannot update a Completed or Cancelled delivery");
+    }
+
     return await prisma.delivery.update({
-        where: { id: deliveryId, partnerId },
-        data: {
-            tentativeDate: new Date(tentativeDate)
-        }
+        where: { id: deliveryId },
+        data: { tentativeDate: new Date(tentativeDate) }
     });
 };
