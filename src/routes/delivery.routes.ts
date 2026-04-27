@@ -5,7 +5,12 @@ import * as deliveryController from "../controllers/delivery.controller.js";
 
 export const router = Router();
 
-router.get("/delivery", authMiddleware, deliveryController.trackDelivery);
+router.get("/delivery", 
+    authMiddleware,
+    roleMiddleware("ADMIN", "USER"),
+    deliveryController.trackDelivery
+);
+
 router.get("/delivery/assigned",
     authMiddleware, 
     roleMiddleware("PARTNER"), 

@@ -1,4 +1,4 @@
-import { addParterDetailsService, getPartnersByLocationService, registerPartnerService } from "../services/partner.service.js";
+import { addParterDetailsService, getPartnerDetailsService, getPartnersByLocationService, registerPartnerService } from "../services/partner.service.js";
 
 export const registerPartner = async (req, res) => {
     try {
@@ -75,6 +75,23 @@ export const getPartnersByLocation = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Partners fetched successfully",
+            data: result
+        });
+    }
+    catch(error) {
+        return res.status(500).json({
+            success: false,
+            message: "Server error"
+        }); 
+    }
+};
+
+export const getPartnerDetails = async (req, res) => {
+    try {
+        const result = await getPartnerDetailsService(req.user.id);
+        return res.status(200).json({
+            success: true,
+            message: "Partner details fetched successfully",
             data: result
         });
     }

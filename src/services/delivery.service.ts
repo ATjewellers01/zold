@@ -23,7 +23,14 @@ export const initiateDeliveryService = async (userId: string, deliveryDetails) =
         });
 
         await tx.delivery.create({
-            data: { userId, partnerId, metal, coin_grams: coinGrams, quantity, addressOfDelivery: deliveryAddress }
+            data: { 
+                userId, 
+                partnerId, 
+                metal, 
+                coin_grams: coinGrams, 
+                quantity, 
+                addressOfDelivery: deliveryAddress 
+            }
         });
     });
 };

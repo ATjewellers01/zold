@@ -79,3 +79,11 @@ export const getPartnersByLocationService = async (city?: string) => {
 
     return result;
 };
+
+export const getPartnerDetailsService = async (userId: string) => {
+    const result = await prisma.partner.findMany({
+        where: { userId }
+    });
+
+    return result;
+};
