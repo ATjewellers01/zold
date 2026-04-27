@@ -20,3 +20,13 @@ router.patch("/delivery/assigned/:deliveryId",
 
 router.post("/delivery/:deliveryId", authMiddleware, deliveryController.cancelDelivery);
 router.post("/delivery", authMiddleware, deliveryController.initiateDelivery);
+router.post("/delivery/complete/:deliveryId",
+    authMiddleware,
+    roleMiddleware("PARTNER"),
+    deliveryController.completeDelivery
+);
+router.post("/delivery/complete-verify/:deliveryId", 
+    authMiddleware,
+    roleMiddleware("PARTNER"),
+    deliveryController.verifyDelivery
+);

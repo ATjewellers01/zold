@@ -1,4 +1,4 @@
-import { cancelDeliveryService, initiateDeliveryService, trackDeliveryService, trackPartnerAssignedDeliveryService, updatePartnerDeliveryInformationService } from "../services/delivery.service.js";
+import { cancelDeliveryService, completeDeliveryService, initiateDeliveryService, trackDeliveryService, trackPartnerAssignedDeliveryService, updatePartnerDeliveryInformationService, verifyDeliveryService } from "../services/delivery.service.js";
 import { ApiError } from "../utils/error_class.js";
 
 const handleError = (error: any, res: any) => {
@@ -72,5 +72,46 @@ export const updatePartnerDeliveryInformation = async (req, res) => {
         });
     } catch (error: any) {
         return handleError(error, res);
+    }
+};
+
+export const completeDelivery = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { deliveryId } = req.params;
+        const result = await completeDeliveryService(userId, deliveryId);
+
+        return res.status(200).json({
+            success: true,
+            message: "Delivery completed",
+            data: result
+        });
+    }
+    catch(error: any) {
+        return res.status(error.statusCode || 500).json({
+            success: false,
+            message: error.message || "Server error",
+        });
+    }
+};
+
+export const verifyDelivery = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { deliveryId } = req.params;
+        const { enteredOtp } = req.body;
+        const result = await verifyDeliveryService(userId, deliveryId, enteredOtp);
+
+        return res.status(200).json({
+            success: true,
+            message: "Delivery verified successfully",
+            data: {}
+        });
+    }
+    catch(error: any) {
+        return res.status(error.statusCode).json({
+            success: false,
+            message: error.message || "Server error"
+        });
     }
 };

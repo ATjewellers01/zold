@@ -1,5 +1,9 @@
 import prisma from "../config/db.js"
+import { Resend } from "resend";
+
 import { ApiError } from "../utils/error_class.js";
+import { generateOtp } from "../utils/otp.js";
+import { resend, sendOTP } from "./email.service.js";
 
 export const initiateDeliveryService = async (userId: string, deliveryDetails) => {
     const { metal, coinGrams, quantity, partnerId, deliveryAddress } = deliveryDetails;
@@ -115,5 +119,77 @@ export const updatePartnerDeliveryInformationService = async (
     return await prisma.delivery.update({
         where: { id: deliveryId },
         data: { tentativeDate: new Date(tentativeDate) }
+    });
+};
+
+export const completeDeliveryService = async (userId: string, deliveryId: string) => {
+    const validDelivery = await prisma.delivery.findUnique({ where: {id: deliveryId} });
+    if ((validDelivery) &&
+        (validDelivery.status === "CANCELLED" || validDelivery.status === "DELIVERED")) {
+        throw new ApiError(400, `The delivery is already ${validDelivery.status}`);
+    }
+
+    if (!validDelivery) {
+        throw new ApiError(400, "Invalid Delivery");
+    }
+
+    const validPartner = await prisma.partner.findUnique({ where: { userId } });
+    if (!validPartner) {
+        throw new ApiError(400, "You are not a registered partner");
+    }
+
+    if (validPartner.id !== validDelivery.partnerId) {
+        throw new ApiError(400, "You are not assigned to this delivery");
+    }
+
+    const customerId = validDelivery.userId;
+    const customerInfo = await prisma.user.findUnique({ where: { id: customerId } });
+    if (!customerInfo) {
+        throw new ApiError(400, "Invalid customer");
+    }
+
+    const customerEmail = customerInfo.email;
+    const otp = parseInt(generateOtp());
+
+    const { data, error } = await resend.emails.send({
+        from: "zold@mail.saloonmate.com",
+        to: customerEmail,
+        subject: `Your delivery of ${validDelivery.metal} coin confirmation OTP`,
+        html: `<h2>Confirm your delivery</h2>
+        <p>Hi ${customerInfo.username},</p>
+        <p>Your One-Time Password (OTP) for confirming your delivery is:</p>
+        <h1 style="color: #3D3066; letter-spacing: 5px;">${otp}</h1>
+        <p>This code will expire in 10 minutes.</p>
+        <p>Please, give this OTP to delivery partner, make sure, 
+        you receive your order after giving this otp, as this will mark your delivery confirmed</p>
+        <br/>`
+    });
+
+    if(error) {
+        throw new ApiError(500, error.message);
+    }
+
+    await prisma.delivery.update({
+        where: { id: deliveryId },
+        data: { otp }
+    });
+
+    return otp;
+};
+
+export const verifyDeliveryService = async (userId: string, deliveryId: string, otp: number) => {
+    const delivery = await prisma.delivery.findUnique({ where: { id: deliveryId } });
+
+    if (!delivery) {
+        throw new ApiError(400, "Invalid delivery");
+    }
+
+    if (delivery.otp !== otp) {
+        throw new ApiError(400, "Invalid OTP");
+    }
+
+    await prisma.delivery.update({
+        where: { id: deliveryId },
+        data: { status: "DELIVERED", completionDate: new Date() }
     });
 };

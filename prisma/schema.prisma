@@ -507,6 +507,28 @@ model SipTransaction {
   user                User              @relation(fields: [user_id], references: [id])
 }
 
+model Delivery {
+  id                String         @id @default(uuid())
+  userId            String
+  partnerId         String
+  metal             Metal
+  coin_grams        Int
+  quantity          Int
+  tentativeDate     DateTime?
+  completionDate    DateTime?
+  addressOfDelivery String
+  otp               Int?
+  status            DeliveryStatus @default(PENDING)
+  createdAt         DateTime       @default(now())
+
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  partner           Partner        @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([partnerId])
+  @@index([status])
+}
+
 enum Source {
   ADMIN
   LIVE
@@ -607,27 +629,6 @@ enum SipTransactionStatus {
 
 enum SipType {
   REGULAR
-}
-
-model Delivery {
-  id                String         @id @default(uuid())
-  userId            String
-  partnerId         String
-  metal             Metal
-  coin_grams        Int
-  quantity          Int
-  tentativeDate     DateTime?
-  completionDate    DateTime?
-  addressOfDelivery String
-  status            DeliveryStatus @default(PENDING)
-  createdAt         DateTime       @default(now())
-
-  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  partner           Partner        @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([partnerId])
-  @@index([status])
 }
 
 enum DeliveryStatus {

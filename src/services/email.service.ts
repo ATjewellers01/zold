@@ -4,7 +4,7 @@ import prisma from "../config/db.js";
 
 dotenv.config();
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+export const resend = new Resend(process.env.RESEND_API_KEY);
 
 interface AdminDetails {
   name: string;
@@ -25,17 +25,13 @@ export const sendEmail = async (
       html: html,
     });
 
-    console.log(to);
-
     if (error) {
-      console.error("Resend Error:", error);
       return false;
     }
-
-    console.log(`Email sent successfully: ${data?.id}`);
+    
     return true;
-  } catch (error) {
-    console.error("Error sending email:", error);
+  } 
+  catch (error) {
     return false;
   }
 };
