@@ -1,0 +1,31 @@
+[33mcommit 99a8ecb72701722bee68b220bbb6eaf2cbf3f08c[m
+Author: mozxammil <mozxammil>
+Date:   Sat Apr 4 13:01:11 2026 +0530
+
+    the docker file import error fixed
+
+package-lock.json
+public
+public.pub
+src/controllers/coinPurchaseSessionController.ts
+src/controllers/goldGoalController.ts
+src/controllers/gstController.ts
+src/controllers/manageMetalPriceController.ts
+src/controllers/metalPurchaseSessionController.ts
+src/middlewares/coinPurchaseSessionMiddleware.ts
+src/middlewares/metalPurchaseSessionMiddleware.ts
+src/routes/adminRoutes.ts
+src/routes/coinPurchaseSessionRoute.ts
+src/routes/metaRoutes.ts
+src/services/coinPurchaseSessionService.ts
+src/services/coinService.ts
+src/services/getUserTransactionHistoryService.ts
+src/services/goldGoalService.ts
+src/services/gstService.ts
+src/services/manageMetalPriceService.ts
+src/services/manageSellTransactionService.ts
+src/services/metalPurchaseSessionService.ts
+src/services/metalRateCleanerService.ts
+src/services/schedulerService.ts
+src/services/sessionCleanerService.ts
+src/services/silverApiService.ts

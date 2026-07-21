@@ -1,0 +1,91 @@
+import { Resend } from "resend";
+import dotenv from "dotenv";
+import prisma from "../config/db.js";
+
+dotenv.config();
+
+export const resend = new Resend(process.env.RESEND_API_KEY);
+
+interface AdminDetails {
+  name: string;
+  email: string;
+  username: string;
+}
+
+export const sendEmail = async (
+  to: string,
+  subject: string,
+  html: string,
+): Promise<boolean> => {
+  try {
+    const { data, error } = await resend.emails.send({
+      from: "zold@mail.saloonmate.com",
+      to: to,
+      subject: subject,
+      html: html,
+    });
+
+    if (error) {
+      return false;
+    }
+    
+    return true;
+  } 
+  catch (error) {
+    return false;
+  }
+};
+
+export const sendOTP = async (
+  userId: string,
+  userEmail: string,
+  otp: string,
+): Promise<boolean> => {
+  const subject = "Your Verification OTP";
+  const html = `
+    <h2>Verify Your Email</h2>
+    <p>Your One-Time Password (OTP) for registration is:</p>
+    <h1 style="color: #3D3066; letter-spacing: 5px;">${otp}</h1>
+    <p>This code will expire in 10 minutes.</p>
+    <p>If you did not request this, please ignore this email.</p>
+    <br/>
+    <p style="color: gray; font-size: 12px;">(Testing Mode: Original recipient was ${userEmail})</p>
+  `;
+
+    await prisma.user.update({
+    where: { id: userId },
+    data: { otp, otpExpiry: new Date(Date.now() + 10 * 60 * 1000) },
+  });
+  return await sendEmail(`${userEmail}`, subject, html);
+};
+
+export const sendAdminApprovalEmail = async (
+  adminDetails: AdminDetails,
+  approvalLink: string,
+): Promise<boolean> => {
+  const subject = "Action Required: Approve New Admin User";
+  const html = `
+    <h2>New Admin Approval Request</h2>
+    <p>A new user has signed up and requested Admin access.</p>
+    <p><strong>Name:</strong> ${adminDetails.name}</p>
+    <p><strong>Email:</strong> ${adminDetails.email}</p>
+    <p><strong>Username:</strong> ${adminDetails.username}</p>
+    <br/>
+    <p>Please click the link below to approve this user as an Admin:</p>
+    <a href="${approvalLink}" style="padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;">Approve Admin</a>
+    <p>If you did not expect this, please ignore this email.</p>
+  `;
+  return await sendEmail("vikashchaudhari103@gmail.com", subject, html);
+};
+
+export const sendApprovalNotificationToAdmin = async (
+  adminEmail: string,
+): Promise<boolean> => {
+  const subject = "Admin Access Approved";
+  const html = `
+    <h2>Access Approved!</h2>
+    <p>Your request for Admin access has been approved.</p>
+    <p>You can now log in to the dashboard.</p>
+  `;
+  return await sendEmail(adminEmail, subject, html);
+};
