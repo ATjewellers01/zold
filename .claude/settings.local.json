@@ -9,7 +9,18 @@
       "Bash(mv:*)",
       "Bash(npm run:*)",
       "Bash(xargs grep:*)",
-      "Bash(npx prisma:*)"
+      "Bash(npx prisma:*)",
+      "Bash(git check-ignore *)",
+      "Bash(node -e ' *)",
+      "Bash(npm install *)",
+      "Bash(grep -rl \"c98u4y6sk2lz\" /Users/vikas/Documents /Users/vikas/.aws /Users/vikas/.pgpass 2>/dev/null | grep -v node_modules | head -20)",
+      "Read(//Users/vikas/Documents/**)",
+      "Read(//Users/vikas/**)",
+      "Bash(aws rds *)",
+      "Bash(psql \"postgresql://postgres:Zold11223344@database-1.c98u4y6sk2lz.ap-south-1.rds.amazonaws.com:5432/Zold?sslmode=require\" -c \"select current_database\\(\\) as db, current_user as usr, version\\(\\);\")",
+      "Bash(pg_dump --version)",
+      "Bash(psql --version)",
+      "Bash(psql \"postgresql://postgres.yirdyeulhmafpyuwkdzg:JV6PcnAVs9sv7482@aws-1-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require\" -tAc \"show server_version;\")"
     ]
   }
 }
