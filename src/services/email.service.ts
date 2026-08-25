@@ -54,7 +54,7 @@ export const sendEmail = async (
   // Option B: Send via Resend API
   if (process.env.RESEND_API_KEY) {
     try {
-      const fromAddress = process.env.EMAIL_FROM || "zold@support.zold.in";
+      const fromAddress = process.env.EMAIL_FROM || "zold@support.zold.in";//OTP1
       const { data, error } = await resend.emails.send({
         from: fromAddress,
         to: to,
