@@ -159,7 +159,7 @@ export const completeDeliveryService = async (userId: string, deliveryId: string
     const otp = parseInt(generateOtp());
 
     const { data, error } = await resend.emails.send({
-        from: "zold@mail.saloonmate.com",
+        from: process.env.EMAIL_FROM || "zold@support.zold.in",
         to: customerEmail,
         subject: `Your delivery of ${validDelivery.metal} coin confirmation OTP`,
         html: `<h2>Confirm your delivery</h2>

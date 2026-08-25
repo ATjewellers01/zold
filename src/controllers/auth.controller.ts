@@ -178,7 +178,7 @@ export const me = async (
   }
 };
 
-export const verifyEmailAndSendOtp = async (req, res) => {
+export const verifyEmailAndSendOtp = async (req: any, res: Response): Promise<any> => {
   try {
     const { email } = req.body;
     if (!email) {
@@ -189,6 +189,13 @@ export const verifyEmailAndSendOtp = async (req, res) => {
     }
 
     const result = await verifyEmailAndSendOtpService(email);
+    if (!result.result) {
+      return res.status(404).json({
+        success: false,
+        message: "No account found with this email"
+      });
+    }
+
     if (result.token) {
       const isProd = process.env.NODE_ENV === "production";
       res.cookie("token", result.token, {
@@ -200,19 +207,20 @@ export const verifyEmailAndSendOtp = async (req, res) => {
     }
     return res.status(200).json({
       success: true,
-      message: "If this email is registered with us, we'll send you a verification code",
+      message: "Verification code sent to your email",
+      token: result.token,
       data: {}
     });
   }
-  catch(error) {
+  catch (error: any) {
     return res.status(500).json({
       success: false,
-      message: "Server error",
+      message: error?.message || "Server error",
     });
   }
 };
 
-export const verifyOtpAndResetPassword = async (req, res) => {
+export const verifyOtpAndResetPassword = async (req: any, res: Response): Promise<any> => {
   try {
     const { enteredOtp, newPassword } = req.body;
     if (!enteredOtp || !newPassword) {
@@ -234,10 +242,10 @@ export const verifyOtpAndResetPassword = async (req, res) => {
       data: {}
     });
   }
-  catch (error) {
-    return res.status(500).json({
+  catch (error: any) {
+    return res.status(error?.status || 500).json({
       success: false,
-      message: "Server error"
+      message: error?.message || "Server error"
     });
   }
 };

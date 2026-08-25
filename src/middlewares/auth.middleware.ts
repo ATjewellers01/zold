@@ -75,9 +75,9 @@ export const authMiddleware = (
   }
 };
 
-export const resetPasswordMiddleware = async (req, res, next) => {
-  const token = req.cookies.token;
-  if(!token) {
+export const resetPasswordMiddleware = async (req: any, res: Response, next: NextFunction): Promise<void> => {
+  const token: string | undefined = req.cookies?.token ?? req.headers.authorization?.split(" ")[1];
+  if (!token) {
     res.status(401).json({ success: false, message: "No token provided" });
     return;
   }
@@ -90,14 +90,14 @@ export const resetPasswordMiddleware = async (req, res, next) => {
     };
     next();
   }
-  catch(error) {
+  catch (error) {
     res.status(401).json({
       success: false,
       message: "Invalid or expired token" 
     });
     return;
   }
-}
+};
 
 export const roleMiddleware = (...allowedRoles: string[]) => {
   return (

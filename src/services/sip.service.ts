@@ -50,30 +50,36 @@ export const createSipRzpOrder = async (
     const gstAmount = (gstRate / 100) * amount;
     const totalAmount = amount + gstAmount;
 
-    const order = await razorpay.orders.create({
-        amount: Math.round(Number(totalAmount) * 100),
-        currency: "INR",
-        receipt: `reciept_sip${Date.now()}`
-    });
+    try {
+        const order = await razorpay.orders.create({
+            amount: Math.round(Number(totalAmount) * 100),
+            currency: "INR",
+            receipt: `reciept_sip${Date.now()}`
+        });
 
-    return {
-        orderId: order.id,
-        amount: order.amount,
-        currency: order.currency,
-        receipt: order.receipt,
-        keyId: process.env.RAZORPAY_KEY_ID,
-        sipDetails: {
-            name,
-            metal,
-            amount,
-            day_of_month,
-        },
-        orderDetails: {
-            gstRate,
-            gstAmount,
-            totalAmount
-        }
-    };
+        return {
+            orderId: order.id,
+            amount: order.amount,
+            currency: order.currency,
+            receipt: order.receipt,
+            keyId: process.env.RAZORPAY_KEY_ID,
+            sipDetails: {
+                name,
+                metal,
+                amount,
+                day_of_month,
+            },
+            orderDetails: {
+                gstRate,
+                gstAmount,
+                totalAmount
+            }
+        };
+    } catch (error: any) {
+        console.error("RAZORPAY_SIP_ORDER_ERROR:", error);
+        const details = error.error?.description || error.message || JSON.stringify(error);
+        throw new Error(`Razorpay SIP: ${details}`);
+    }
 };
 
 export const verifySipTransaction = async (
@@ -91,7 +97,7 @@ export const verifySipTransaction = async (
         .digest("hex");
 
     if (expected != signature) {
-        throw new Error("Invalid transaction");
+        throw new Error("Invalid transaction signature");
     }
 
     const existOrder = await prisma.sipTransaction.findMany({
@@ -170,20 +176,26 @@ export const createTopupOrderService = async (
     const gstAmount = (gstRate / 100) * amount;
     const totalAmount = amount + gstAmount;
 
-    const order = await razorpay.orders.create({
-        amount: Math.round(totalAmount * 100),
-        currency: "INR",
-        receipt: `receipt_topup_${Date.now()}`,
-    });
+    try {
+        const order = await razorpay.orders.create({
+            amount: Math.round(totalAmount * 100),
+            currency: "INR",
+            receipt: `receipt_topup_${Date.now()}`,
+        });
 
-    return {
-        orderId: order.id,
-        amount: order.amount,
-        currency: order.currency,
-        keyId: process.env.RAZORPAY_KEY_ID,
-        topupDetails: { metal, amount, buyRate: rate.buyRate },
-        orderDetails: { gstRate, gstAmount, totalAmount },
-    };
+        return {
+            orderId: order.id,
+            amount: order.amount,
+            currency: order.currency,
+            keyId: process.env.RAZORPAY_KEY_ID,
+            topupDetails: { metal, amount, buyRate: rate.buyRate },
+            orderDetails: { gstRate, gstAmount, totalAmount },
+        };
+    } catch (error: any) {
+        console.error("RAZORPAY_TOPUP_ORDER_ERROR:", error);
+        const details = error.error?.description || error.message || JSON.stringify(error);
+        throw new Error(`Razorpay Top-up: ${details}`);
+    }
 };
 
 export const verifyTopupService = async (
@@ -199,7 +211,7 @@ export const verifyTopupService = async (
         .update(`${orderId}|${paymentId}`)
         .digest("hex");
 
-    if (expected !== signature) throw new Error("Invalid transaction");
+    if (expected !== signature) throw new Error("Invalid transaction signature");
 
     // Idempotency: don't double-credit if webhook fires twice
     const existing = await prisma.sipTransaction.findFirst({

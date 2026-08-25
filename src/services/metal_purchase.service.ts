@@ -117,6 +117,9 @@ export const createMetalRzpOrderService = async (
     }
 
     try {
+        console.log("RAZORPAY_KEY_ID:", process.env.RAZORPAY_KEY_ID);
+        console.log("RAZORPAY_KEY_SECRET_LENGTH:", process.env.RAZORPAY_KEY_SECRET?.length);
+
         const order = await razorpay.orders.create({
             amount: Math.round(Number(session.finalAmount) * 100),
             currency: "INR",
@@ -135,9 +138,18 @@ export const createMetalRzpOrderService = async (
             keyId: process.env.RAZORPAY_KEY_ID,
             sessionId
         };
-    } catch (error) {
-        console.log("Razorpay order creation failed", error);
-        throw new Error("Payment gateway unavailable. Please try again");
+    } catch (error: any) {
+        console.error("RAZORPAY_ORDER_ERROR:", {
+            sessionId,
+            message: error.message,
+            description: error.error?.description,
+            code: error.error?.code,
+            raw: JSON.stringify(error)
+        });
+
+        // FORCE display of the error details
+        const details = error.error?.description || error.message || JSON.stringify(error);
+        throw new Error(`RZP_FAILED: ${details}`);
     }
 };
 
@@ -154,7 +166,7 @@ export const verifyMetalRzpPaymentService = async (
         .digest("hex");
 
     if (expected !== signature) {
-        throw new Error("Invalid transaction");
+        throw new Error("Invalid transaction signature");
     }
 
     // Idempotency: if this payment was already processed, return existing records
@@ -189,7 +201,7 @@ export const verifyMetalRzpPaymentService = async (
     });
 
     if (!paymentSession || paymentSession.razorpay_order_id !== orderId) {
-        throw new Error("Invalid transaction");
+        throw new Error("Invalid transaction session");
     }
 
     const verifiedPayment = await prisma.$transaction(async (tx) => {

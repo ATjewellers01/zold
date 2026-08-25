@@ -247,41 +247,58 @@ export const getMeService = async (userId: string) => {
 };
 
 
-// For pasword reset -> create token with the email, set ttl of 5 min, and send an otp
-export const verifyEmailAndSendOtpService = async (email) => {
+// For password reset -> create token with the email, set ttl of 5 min, save OTP to DB and send email
+export const verifyEmailAndSendOtpService = async (email: string) => {
   const emailExist = await prisma.user.findUnique({
     where: { email }
   });
   
-  if(!emailExist) return {result: false};
+  if (!emailExist) return { result: false };
   const otp = generateOtp();
-  const subject = "Your email verification otp"
+  const subject = "Your Email Verification OTP";
   const html = `
-    <h2>Verify your email for reset you password</h2>
+    <h2>Verify your email to reset your password</h2>
     <p>Your One-Time Password (OTP) for email verification is:</p>
     <h1 style="color: #3D3066; letter-spacing: 5px;">${otp}</h1>
     <p>This code will expire in 5 minutes.</p>
     <p>If you did not request this, please ignore this email.</p>
     <br/>
-    <p style="color: gray; font-size: 12px;">(Testing Mode: Original recipient was ${email})</p>
+    <p style="color: gray; font-size: 12px;">(Recipient: ${email})</p>
   `;
 
+  if (process.env.NODE_ENV !== "production") {
+    console.log(`\n========================================`);
+    console.log(`🔑 DEV FORGOT-PASSWORD OTP for ${email}: ${otp}`);
+    console.log(`========================================\n`);
+  }
+
+  await prisma.user.update({
+    where: { id: emailExist.id },
+    data: { otp, otpExpiry: new Date(Date.now() + 5 * 60 * 1000) }
+  });
+
   await sendEmail(email, subject, html);
-  const payload = {otp, email};
-  const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: 300 });
+  const payload = { otp, email };
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: 300 });
   return { result: true, token };
 };
 
-export const verifyOtpAndResetPasswordService = async (enteredOtp, otp, email, newPassword) => {
-  if(enteredOtp !== otp) {
-    throw new Error("Invalid or expired otp");
+export const verifyOtpAndResetPasswordService = async (
+  enteredOtp: string,
+  expectedOtp: string,
+  email: string,
+  newPassword: string
+) => {
+  if (!enteredOtp || !expectedOtp || enteredOtp !== expectedOtp) {
+    throw Object.assign(new Error("Invalid or expired OTP"), { status: 400 });
   }
   
   const hashPassword = await bcrypt.hash(newPassword, 10);
-  const updatePassword = prisma.user.update({
+  const updatePassword = await prisma.user.update({
     where: { email },
-    data: { password:  hashPassword }
+    data: { password: hashPassword, otp: null, otpExpiry: null }
   });
   
   return updatePassword;
 };
+

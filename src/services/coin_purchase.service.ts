@@ -282,9 +282,10 @@ export const createCoinRzpOrderService = async (sessionId: string, userId: strin
             keyId: process.env.RAZORPAY_KEY_ID,
             sessionId
         };
-    } catch (error) {
-        console.log("Razorpay order creation failed", error);
-        throw new Error("Payment gateway unavailable. Please try again");
+    } catch (error: any) {
+        console.error("RAZORPAY_COIN_ORDER_ERROR:", error);
+        const details = error.error?.description || error.message || JSON.stringify(error);
+        throw new Error(`Razorpay Coins: ${details}`);
     }
 };
 
@@ -300,7 +301,7 @@ export const verifyCoinRzpPaymentService = async (
         .digest("hex");
 
     if (expected !== signature) {
-        throw new Error("Invalid transaction");
+        throw new Error("Invalid transaction signature");
     }
 
     const completedSession = await prisma.coinPurchaseSession.findFirst({
@@ -323,7 +324,7 @@ export const verifyCoinRzpPaymentService = async (
     });
 
     if (!paymentSession || paymentSession.razorpay_order_id !== orderId) {
-        throw new Error("Invalid transaction");
+        throw new Error("Invalid transaction session");
     }
 
     const lockedCart = paymentSession.lockedCart;
