@@ -85,7 +85,7 @@ export const sendEmail = async (
 };
 
 export const sendOTP = async (
-  userId: string,
+  userId: string | null | undefined,
   userEmail: string,
   otp: string,
 ): Promise<boolean> => {
@@ -106,10 +106,12 @@ export const sendOTP = async (
     console.log(`========================================\n`);
   }
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: { otp, otpExpiry: new Date(Date.now() + 10 * 60 * 1000) },
-  });
+  if (userId) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { otp, otpExpiry: new Date(Date.now() + 10 * 60 * 1000) },
+    });
+  }
 
   return await sendEmail(`${userEmail}`, subject, html);
 };

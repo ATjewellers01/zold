@@ -5,6 +5,7 @@ import {
   signupService,
   loginService,
   verifyOtpService,
+  resendOtpService,
   approveAdminService,
   getMeService,
   verifyEmailAndSendOtpService,
@@ -46,24 +47,14 @@ export const signup = async (
   }
 };
 
-export const resendOtp = async (req, res) => {
+export const resendOtp = async (req: any, res: Response): Promise<any> => {
   try {
     const { email } = req.body;
     if (!email) {
       return res.status(400).json({ success: false, message: "Email is required" });
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      return res.status(404).json({ success: false, message: "No account found with this email" });
-    }
-
-    if (user.isVerified) {
-      return res.status(400).json({ success: false, message: "Account is already verified" });
-    }
-
-    const otp = generateOtp();
-    await sendOTP(user.id, email, otp);
+    await resendOtpService(email);
     return res.status(200).json({
       success: true,
       message: "OTP sent successfully",
@@ -71,12 +62,12 @@ export const resendOtp = async (req, res) => {
     });
   }
   catch (error: any) {
-    return res.status(500).json({
+    return res.status(error?.status || 500).json({
       success: false,
       message: error.message || "Server error"
     });
   }
-}
+};
 
 export const login = async (
   req: AuthenticatedRequest,

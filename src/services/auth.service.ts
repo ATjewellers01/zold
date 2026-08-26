@@ -28,6 +28,19 @@ export interface SignupResult {
   referralCode?: string;
 }
 
+interface PendingSignup {
+  name: string;
+  username: string;
+  email: string;
+  password: string;
+  phone?: string | null;
+  referralCode?: string;
+  otp: string;
+  otpExpiry: Date;
+}
+
+const pendingSignups = new Map<string, PendingSignup>();
+
 const generateUniqueReferralCode = async (name: string): Promise<string> => {
   const namePart = name.slice(0, 4).toUpperCase();
   while (true) {
@@ -42,52 +55,43 @@ export const signupService = async (
   input: SignupInput
 ): Promise<SignupResult> => {
   const { name, username, email, password, phone, referralCode: inputReferralCode } = input;
+  const normalizedEmail = email.toLowerCase().trim();
+
+  const existingConditions: any[] = [{ email: normalizedEmail }, { username }];
+  if (phone && phone.trim() !== "") {
+    existingConditions.push({ phone: phone.trim() });
+  }
 
   const existingUser = await prisma.user.findFirst({
-    where: { OR: [{ email }, { username }] },
+    where: { OR: existingConditions },
   });
   if (existingUser) {
-    throw Object.assign(new Error("User with this email or username already exists"), {
-      status: 400,
-    });
+    throw Object.assign(
+      new Error("User with this email, username, or phone already exists"),
+      { status: 400 }
+    );
   }
 
   const userCount = await prisma.user.count();
   const role: "ADMIN" | "USER" = userCount === 0 ? "ADMIN" : "USER";
 
   const hashedPassword = await bcrypt.hash(password, 10);
-  const newReferralCode = await generateUniqueReferralCode(name);
-
-  const newUser = await prisma.user.create({
-    data: {
-      name,
-      username,
-      email,
-      password: hashedPassword,
-      phone: phone || "",
-      role: role as any,
-      isVerified: false,
-      referralCode: newReferralCode,
-    },
-  });
-
-  if (inputReferralCode && role === "USER") {
-    const referrer = await prisma.user.findUnique({
-      where: { referralCode: inputReferralCode },
-    });
-    if (referrer) {
-      await prisma.referral.create({
-        data: {
-          referrerId: referrer.id,
-          referredUserId: newUser.id,
-          status: "PENDING",
-          rewardAmount: 100,
-        },
-      });
-    }
-  }
 
   if (role === "ADMIN") {
+    const newReferralCode = await generateUniqueReferralCode(name);
+    const newUser = await prisma.user.create({
+      data: {
+        name,
+        username,
+        email: normalizedEmail,
+        password: hashedPassword,
+        phone: phone || "",
+        role: role as any,
+        isVerified: false,
+        referralCode: newReferralCode,
+      },
+    });
+
     const token = jwt.sign(
       { userId: newUser.id, email: newUser.email, purpose: "verification" },
       JWT_SECRET,
@@ -107,14 +111,20 @@ export const signupService = async (
   const otp = generateOtp();
   const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
-  await prisma.user.update({
-    where: { id: newUser.id },
-    data: {otp, otpExpiry },
+  pendingSignups.set(normalizedEmail, {
+    name,
+    username,
+    email: normalizedEmail,
+    password: hashedPassword,
+    phone: phone || "",
+    referralCode: inputReferralCode,
+    otp,
+    otpExpiry,
   });
 
-  await sendOTP(newUser.id, newUser.email, otp);
+  await sendOTP(null, normalizedEmail, otp);
 
-  return { role: "USER", referralCode: newReferralCode };
+  return { role: "USER" };
 };
 
 export interface LoginResult {
@@ -178,11 +188,99 @@ export const loginService = async (
   };
 };
 
+export const resendOtpService = async (email: string): Promise<void> => {
+  const normalizedEmail = email.toLowerCase().trim();
+  const pending = pendingSignups.get(normalizedEmail);
+
+  if (pending) {
+    const otp = generateOtp();
+    pending.otp = otp;
+    pending.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    await sendOTP(null, pending.email, otp);
+    return;
+  }
+
+  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+  if (!user) {
+    throw Object.assign(new Error("No account found with this email"), { status: 404 });
+  }
+
+  if (user.isVerified) {
+    throw Object.assign(new Error("Account is already verified"), { status: 400 });
+  }
+
+  const otp = generateOtp();
+  await sendOTP(user.id, user.email, otp);
+};
+
 export const verifyOtpService = async (
   email: string,
   otp: string
 ): Promise<{ alreadyVerified: boolean }> => {
-  const user = await prisma.user.findUnique({ where: { email } });
+  const normalizedEmail = email.toLowerCase().trim();
+  const pending = pendingSignups.get(normalizedEmail);
+
+  if (pending) {
+    if (pending.otp !== otp) {
+      throw Object.assign(new Error("Invalid OTP"), { status: 400 });
+    }
+    if (new Date() > pending.otpExpiry) {
+      throw Object.assign(new Error("OTP expired"), { status: 400 });
+    }
+
+    const existingConditions: any[] = [{ email: pending.email }, { username: pending.username }];
+    if (pending.phone) {
+      existingConditions.push({ phone: pending.phone });
+    }
+    const existingUser = await prisma.user.findFirst({
+      where: { OR: existingConditions },
+    });
+    if (existingUser) {
+      pendingSignups.delete(normalizedEmail);
+      throw Object.assign(
+        new Error("User with this email, username, or phone already exists"),
+        { status: 400 }
+      );
+    }
+
+    const userCount = await prisma.user.count();
+    const role: "ADMIN" | "USER" = userCount === 0 ? "ADMIN" : "USER";
+    const newReferralCode = await generateUniqueReferralCode(pending.name);
+
+    const newUser = await prisma.user.create({
+      data: {
+        name: pending.name,
+        username: pending.username,
+        email: pending.email,
+        password: pending.password,
+        phone: pending.phone || "",
+        role: role as any,
+        isVerified: true,
+        referralCode: newReferralCode,
+      },
+    });
+
+    if (pending.referralCode && role === "USER") {
+      const referrer = await prisma.user.findUnique({
+        where: { referralCode: pending.referralCode },
+      });
+      if (referrer) {
+        await prisma.referral.create({
+          data: {
+            referrerId: referrer.id,
+            referredUserId: newUser.id,
+            status: "PENDING",
+            rewardAmount: 100,
+          },
+        });
+      }
+    }
+
+    pendingSignups.delete(normalizedEmail);
+    return { alreadyVerified: false };
+  }
+
+  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (!user) {
     throw Object.assign(new Error("User not found"), { status: 404 });
   }
